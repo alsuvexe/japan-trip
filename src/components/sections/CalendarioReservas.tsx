@@ -1,31 +1,41 @@
 import { useEffect, useState } from 'react';
-import { Plane, Hotel, UtensilsCrossed, Calendar, CheckSquare, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import {
+  Package, FileText, TrainFront, Clock, Ticket, CreditCard,
+  Calendar, ChevronLeft, ChevronRight, Plus, Pencil, Trash2, Save, X,
+} from 'lucide-react';
 import Modal from '../Modal';
 
-type EventType = 'flight' | 'hotel-in' | 'hotel-out' | 'restaurant' | 'task' | 'manual';
+type NoteCategory = 'reserva' | 'documentacion' | 'transporte' | 'hito' | 'ocio' | 'finanzas';
 
-interface CalendarEvent {
-  id?: string;
+interface CalendarNote {
+  id: string;
   date: string;
-  type: EventType;
-  label: string;
-  color: string;
-  assignee?: string;
-  source?: string;
+  category: NoteCategory;
+  title: string;
+  description: string;
 }
 
-const EVENT_CATEGORIES: { value: EventType; label: string; dotColor: string; textClass: string; bgClass: string; borderClass: string }[] = [
-  { value: 'flight',     label: 'Vuelo',         dotColor: '#b45309', textClass: 'text-amber-700',   bgClass: 'bg-amber-50',   borderClass: 'border-amber-300' },
-  { value: 'hotel-in',  label: 'Check-in',       dotColor: '#0e7490', textClass: 'text-cyan-700',    bgClass: 'bg-cyan-50',    borderClass: 'border-cyan-300' },
-  { value: 'hotel-out', label: 'Check-out',      dotColor: '#be185d', textClass: 'text-pink-700',    bgClass: 'bg-pink-50',    borderClass: 'border-pink-300' },
-  { value: 'restaurant',label: 'Restaurante',    dotColor: '#059669', textClass: 'text-emerald-700', bgClass: 'bg-emerald-50', borderClass: 'border-emerald-300' },
-  { value: 'task',      label: 'Tarea',          dotColor: '#d97706', textClass: 'text-amber-700',   bgClass: 'bg-amber-50',   borderClass: 'border-amber-300' },
-  { value: 'manual',    label: 'Evento general', dotColor: '#0369a1', textClass: 'text-sky-700',     bgClass: 'bg-sky-50',     borderClass: 'border-sky-300' },
+const CATEGORIES: {
+  id: NoteCategory;
+  label: string;
+  emoji: string;
+  dotColor: string;
+  bg: string;
+  text: string;
+  border: string;
+  icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
+}[] = [
+  { id: 'reserva',       label: 'Reserva',          emoji: '📦', dotColor: '#0e7490', bg: 'bg-cyan-50',    text: 'text-cyan-700',    border: 'border-cyan-300',   icon: Package      },
+  { id: 'documentacion', label: 'Documentación',     emoji: '📄', dotColor: '#7c3aed', bg: 'bg-violet-50', text: 'text-violet-700',  border: 'border-violet-300', icon: FileText     },
+  { id: 'transporte',    label: 'Transporte',        emoji: '🚇', dotColor: '#1d4ed8', bg: 'bg-blue-50',   text: 'text-blue-700',    border: 'border-blue-300',   icon: TrainFront   },
+  { id: 'hito',          label: 'Hito / Fecha Límite', emoji: '⏰', dotColor: '#b45309', bg: 'bg-amber-50',  text: 'text-amber-700',   border: 'border-amber-300',  icon: Clock        },
+  { id: 'ocio',          label: 'Ocio / Entradas',   emoji: '🎟️', dotColor: '#be185d', bg: 'bg-rose-50',   text: 'text-rose-700',    border: 'border-rose-300',   icon: Ticket       },
+  { id: 'finanzas',      label: 'Finanzas / Pagos',  emoji: '💳', dotColor: '#059669', bg: 'bg-emerald-50',text: 'text-emerald-700', border: 'border-emerald-300',icon: CreditCard   },
 ];
 
 const DAYS_OF_WEEK = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'];
 const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const STORAGE_KEY = 'japan_trip_calendar_notes';
 
 const GLASS_CARD: React.CSSProperties = {
   background: 'rgba(255,255,255,0.75)',
@@ -35,80 +45,43 @@ const GLASS_CARD: React.CSSProperties = {
   boxShadow: '0 4px 20px rgba(0,0,0,0.10)',
 };
 
-function getCatConfig(type: EventType) {
-  return EVENT_CATEGORIES.find((c) => c.value === type) ?? EVENT_CATEGORIES[5];
+function getCat(id: NoteCategory) {
+  return CATEGORIES.find((c) => c.id === id) ?? CATEGORIES[0];
 }
 
-function EventIcon({ type, size = 11 }: { type: EventType; size?: number }) {
-  switch (type) {
-    case 'flight':    return <Plane size={size} />;
-    case 'hotel-in':
-    case 'hotel-out': return <Hotel size={size} />;
-    case 'restaurant':return <UtensilsCrossed size={size} />;
-    case 'task':      return <CheckSquare size={size} />;
-    case 'manual':    return <Calendar size={size} />;
-  }
+function genId() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
+
+const EMPTY_FORM = { title: '', category: 'reserva' as NoteCategory, description: '' };
 
 export default function CalendarioReservas() {
   const today = new Date();
   const [viewYear, setViewYear] = useState(2026);
   const [viewMonth, setViewMonth] = useState(11);
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [notes, setNotes] = useState<CalendarNote[]>([]);
 
-  const [showNewEvent, setShowNewEvent] = useState(false);
-  const [newEventTitle, setNewEventTitle] = useState('');
-  const [newEventDate, setNewEventDate] = useState('');
-  const [newEventType, setNewEventType] = useState<EventType>('manual');
-  const [saving, setSaving] = useState(false);
+  // Modal state — shared for add + edit
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalDate, setModalDate] = useState('');
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  useEffect(() => { loadEvents(); }, []);
-
-  const loadEvents = async () => {
-    const [hotelsRes, restaurantsRes, calendarRes] = await Promise.all([
-      supabase.from('hotels').select('name, check_in, check_out'),
-      supabase.from('restaurants').select('name, reservation_date').not('reservation_date', 'is', null),
-      supabase.from('calendar_events').select('id, title, event_date, category, assignee, source'),
-    ]);
-
-    const list: CalendarEvent[] = [];
-    const cfg = (t: EventType) => getCatConfig(t);
-
-    list.push({ date: '2026-12-03', type: 'flight', label: 'Vuelo a Osaka', color: cfg('flight').dotColor });
-    list.push({ date: '2026-12-14', type: 'flight', label: 'Vuelo de regreso', color: cfg('flight').dotColor });
-
-    if (hotelsRes.data) {
-      hotelsRes.data.forEach((hotel) => {
-        list.push({ date: hotel.check_in, type: 'hotel-in', label: `Check-in: ${hotel.name}`, color: cfg('hotel-in').dotColor });
-        list.push({ date: hotel.check_out, type: 'hotel-out', label: `Check-out: ${hotel.name}`, color: cfg('hotel-out').dotColor });
-      });
+  // Load from localStorage on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) setNotes(JSON.parse(raw));
+    } catch {
+      // ignore parse errors
     }
+  }, []);
 
-    if (restaurantsRes.data) {
-      restaurantsRes.data.forEach((r) => {
-        if (r.reservation_date) {
-          list.push({ date: r.reservation_date.split('T')[0], type: 'restaurant', label: r.name, color: cfg('restaurant').dotColor });
-        }
-      });
-    }
-
-    if (calendarRes.data) {
-      calendarRes.data.forEach((ev) => {
-        const type = (ev.category as EventType) ?? 'manual';
-        list.push({
-          id: ev.id,
-          date: ev.event_date,
-          type,
-          label: ev.title,
-          color: cfg(type).dotColor,
-          assignee: ev.assignee || undefined,
-          source: ev.source,
-        });
-      });
-    }
-
-    setEvents(list);
-  };
+  // Persist to localStorage whenever notes change
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+  }, [notes]);
 
   const navigate = (dir: -1 | 1) => {
     setViewMonth((m) => {
@@ -119,6 +92,9 @@ export default function CalendarioReservas() {
     });
   };
 
+  const getDateString = (day: number) =>
+    `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
   const firstDay = new Date(viewYear, viewMonth, 1);
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const startDayOfWeek = (firstDay.getDay() + 6) % 7;
@@ -127,79 +103,75 @@ export default function CalendarioReservas() {
   for (let i = 0; i < startDayOfWeek; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
-  const getDateString = (day: number) =>
-    `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  const notesForDay = (day: number) =>
+    notes.filter((n) => n.date === getDateString(day));
 
-  const getEventsForDay = (day: number) => {
-    const ds = getDateString(day);
-    return events.filter((e) => e.date === ds);
-  };
-
-  const getMonthEvents = () =>
-    events
-      .filter((e) => {
-        const [y, m] = e.date.split('-').map(Number);
-        return y === viewYear && m === viewMonth + 1;
-      })
-      .sort((a, b) => a.date.localeCompare(b.date));
-
-  const isTripDay = (day: number) => {
-    const ds = getDateString(day);
-    return ds >= '2026-12-03' && ds <= '2026-12-14';
-  };
+  const monthNotes = notes
+    .filter((n) => {
+      const [y, m] = n.date.split('-').map(Number);
+      return y === viewYear && m === viewMonth + 1;
+    })
+    .sort((a, b) => a.date.localeCompare(b.date));
 
   const isToday = (day: number) => {
     const ds = getDateString(day);
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    return ds === todayStr;
+    const t = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    return ds === t;
+  };
+
+  const openAdd = (dateStr: string) => {
+    setEditingId(null);
+    setModalDate(dateStr);
+    setForm(EMPTY_FORM);
+    setModalOpen(true);
+  };
+
+  const openEdit = (note: CalendarNote, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingId(note.id);
+    setModalDate(note.date);
+    setForm({ title: note.title, category: note.category, description: note.description });
+    setModalOpen(true);
+  };
+
+  const saveNote = () => {
+    if (!form.title.trim()) return;
+    if (editingId) {
+      setNotes((prev) =>
+        prev.map((n) => n.id === editingId ? { ...n, ...form, title: form.title.trim() } : n)
+      );
+    } else {
+      const newNote: CalendarNote = {
+        id: genId(),
+        date: modalDate,
+        category: form.category,
+        title: form.title.trim(),
+        description: form.description.trim(),
+      };
+      setNotes((prev) => [...prev, newNote]);
+    }
+    setModalOpen(false);
+  };
+
+  const confirmDelete = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDeleteConfirmId(id);
+  };
+
+  const deleteNote = () => {
+    setNotes((prev) => prev.filter((n) => n.id !== deleteConfirmId));
+    setDeleteConfirmId(null);
   };
 
   const formatDateLabel = (dateStr: string) =>
-    new Date(dateStr + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+    new Date(dateStr + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
 
-  const openNewEvent = () => {
-    const defaultDate = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-01`;
-    setNewEventDate(defaultDate);
-    setNewEventTitle('');
-    setNewEventType('manual');
-    setShowNewEvent(true);
-  };
-
-  const saveNewEvent = async () => {
-    if (!newEventTitle.trim() || !newEventDate) return;
-    setSaving(true);
-    const payload = {
-      title: newEventTitle.trim(),
-      event_date: newEventDate,
-      category: newEventType,
-      source: 'manual',
-      assignee: '',
-    };
-    const { data } = await supabase.from('calendar_events').insert(payload).select().maybeSingle();
-    if (data) {
-      setEvents((prev) => [...prev, {
-        id: data.id,
-        date: data.event_date,
-        type: newEventType,
-        label: data.title,
-        color: getCatConfig(newEventType).dotColor,
-        source: 'manual',
-      }]);
-    }
-    setSaving(false);
-    setShowNewEvent(false);
-  };
-
-  const deleteEvent = async (ev: CalendarEvent) => {
-    if (!ev.id || ev.source !== 'manual') return;
-    setEvents((prev) => prev.filter((e) => e.id !== ev.id));
-    await supabase.from('calendar_events').delete().eq('id', ev.id);
-  };
-
-  const monthEvents = getMonthEvents();
+  const formatDayShort = (dateStr: string) =>
+    new Date(dateStr + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2
@@ -213,18 +185,22 @@ export default function CalendarioReservas() {
           >
             Calendario
           </h2>
-          <p className="text-sm font-medium" style={{ color: '#334155' }}>Reservas y fechas clave del viaje</p>
+          <p className="text-sm font-medium" style={{ color: '#334155' }}>Notas logísticas del viaje</p>
         </div>
-        <button onClick={openNewEvent} className="japan-btn-primary shrink-0 gap-2 text-sm">
+        <button
+          onClick={() => openAdd(getDateString(1))}
+          className="japan-btn-primary shrink-0 gap-2 text-sm"
+        >
           <Plus size={16} />
-          <span className="hidden sm:inline">Nuevo Evento</span>
-          <span className="sm:hidden">Evento</span>
+          <span className="hidden sm:inline">Nueva nota</span>
+          <span className="sm:hidden">Nota</span>
         </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Calendar grid */}
         <div className="lg:col-span-2 rounded-2xl p-5" style={GLASS_CARD}>
+          {/* Month nav */}
           <div className="flex items-center justify-between mb-5">
             <button
               onClick={() => navigate(-1)}
@@ -248,102 +224,166 @@ export default function CalendarioReservas() {
             </button>
           </div>
 
-          <div className="grid grid-cols-7 gap-1 mb-2">
+          {/* Day labels */}
+          <div className="grid grid-cols-7 gap-1 mb-1">
             {DAYS_OF_WEEK.map((d) => (
-              <div key={d} className="text-center text-xs font-bold py-1" style={{ color: '#475569' }}>{d}</div>
+              <div key={d} className="text-center text-[10px] font-bold py-1 uppercase tracking-wider" style={{ color: '#94a3b8' }}>{d}</div>
             ))}
           </div>
 
+          {/* Day cells */}
           <div className="grid grid-cols-7 gap-1">
             {cells.map((day, idx) => {
               if (!day) return <div key={idx} />;
-              const dayEvents = getEventsForDay(day);
-              const trip = isTripDay(day);
+              const dayNotes = notesForDay(day);
               const tod = isToday(day);
+              const dateStr = getDateString(day);
 
               return (
                 <div
                   key={idx}
-                  className={`relative rounded-lg p-1 min-h-[52px] transition-all ${
+                  onClick={() => openAdd(dateStr)}
+                  className={`relative rounded-xl p-1.5 min-h-[60px] transition-all cursor-pointer group ${
                     tod
-                      ? 'bg-cyan-100 border border-cyan-400/60'
-                      : trip
-                      ? 'bg-cyan-50/70 border border-cyan-300/50'
-                      : 'border border-transparent hover:border-slate-300/80'
+                      ? 'ring-2 ring-cyan-400 ring-offset-1'
+                      : 'hover:ring-1 hover:ring-slate-300'
                   }`}
-                  style={!tod && !trip ? { background: 'rgba(255,255,255,0.35)' } : undefined}
+                  style={{
+                    background: tod
+                      ? 'rgba(14,116,144,0.08)'
+                      : 'rgba(255,255,255,0.55)',
+                    border: '1px solid rgba(0,0,0,0.06)',
+                  }}
                 >
-                  <span className={`text-xs font-semibold block text-center mb-1 ${
-                    tod ? 'text-cyan-700 font-black' : trip ? 'text-cyan-600' : ''
-                  }`} style={!tod && !trip ? { color: '#334155' } : undefined}>
+                  {/* Day number */}
+                  <span
+                    className={`text-[11px] font-bold block text-center mb-1 ${tod ? 'text-cyan-700' : ''}`}
+                    style={!tod ? { color: '#475569' } : undefined}
+                  >
                     {day}
                   </span>
+
+                  {/* Notes chips */}
                   <div className="space-y-0.5">
-                    {dayEvents.slice(0, 2).map((ev, i) => {
-                      const cat = getCatConfig(ev.type);
+                    {dayNotes.slice(0, 3).map((note) => {
+                      const cat = getCat(note.category);
+                      const Icon = cat.icon;
                       return (
-                        <div key={i} className={`flex items-center gap-0.5 rounded px-1 py-0.5 border ${cat.bgClass} ${cat.textClass} ${cat.borderClass} text-[9px] leading-tight`}>
-                          <EventIcon type={ev.type} size={9} />
+                        <div
+                          key={note.id}
+                          onClick={(e) => openEdit(note, e)}
+                          className={`flex items-center gap-0.5 rounded-md px-1 py-0.5 border cursor-pointer hover:brightness-95 transition-all ${cat.bg} ${cat.border}`}
+                          title={note.title}
+                        >
+                          <Icon size={8} strokeWidth={2} />
+                          <span className={`text-[8px] font-semibold leading-none truncate ${cat.text}`}>{note.title}</span>
                         </div>
                       );
                     })}
-                    {dayEvents.length > 2 && (
-                      <div className="text-[9px] text-center" style={{ color: '#94a3b8' }}>+{dayEvents.length - 2}</div>
+                    {dayNotes.length > 3 && (
+                      <div className="text-[8px] text-center font-semibold" style={{ color: '#94a3b8' }}>
+                        +{dayNotes.length - 3}
+                      </div>
                     )}
                   </div>
+
+                  {/* Add hint on hover */}
+                  {dayNotes.length === 0 && (
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none rounded-xl">
+                      <Plus size={14} style={{ color: '#94a3b8' }} />
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
 
-          <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-slate-200/70">
-            {EVENT_CATEGORIES.map((cat) => (
-              <div key={cat.value} className="flex items-center gap-1.5 text-xs" style={{ color: '#475569' }}>
-                <span className={cat.textClass}><EventIcon type={cat.value} size={12} /></span>
-                <span>{cat.label}</span>
-              </div>
-            ))}
+          {/* Legend */}
+          <div className="flex flex-wrap gap-x-4 gap-y-2 mt-4 pt-4 border-t border-slate-200/70">
+            {CATEGORIES.map((cat) => {
+              const Icon = cat.icon;
+              return (
+                <div key={cat.id} className="flex items-center gap-1.5">
+                  <span
+                    className={`inline-flex items-center justify-center w-5 h-5 rounded-md border ${cat.bg} ${cat.border}`}
+                  >
+                    <Icon size={10} strokeWidth={2} />
+                  </span>
+                  <span className="text-[10px] font-semibold" style={{ color: '#475569' }}>{cat.label}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
 
-        {/* Event list */}
-        <div className="rounded-2xl p-5" style={GLASS_CARD}>
-          <h3 className="text-base font-semibold mb-1" style={{ color: '#0f172a' }}>
-            {MONTH_NAMES[viewMonth]} {viewYear}
-          </h3>
-          <p className="text-[11px] mb-4" style={{ color: '#475569' }}>
-            {monthEvents.length} evento{monthEvents.length !== 1 ? 's' : ''} este mes
-          </p>
-          <div className="space-y-2 overflow-y-auto max-h-[420px] pr-1">
-            {monthEvents.length === 0 && (
-              <div className="text-center py-8">
-                <p className="text-sm font-medium" style={{ color: '#94a3b8' }}>Sin eventos este mes</p>
+        {/* Sidebar — agenda feed */}
+        <div className="rounded-2xl p-5 flex flex-col" style={{ ...GLASS_CARD, maxHeight: 560 }}>
+          <div className="mb-4 shrink-0">
+            <h3 className="text-base font-bold" style={{ color: '#0f172a' }}>
+              {MONTH_NAMES[viewMonth]} {viewYear}
+            </h3>
+            <p className="text-[11px] mt-0.5" style={{ color: '#64748b' }}>
+              {monthNotes.length} {monthNotes.length === 1 ? 'nota' : 'notas'} este mes
+            </p>
+          </div>
+
+          <div className="flex-1 overflow-y-auto space-y-2 pr-0.5 scrollbar-thin min-h-0">
+            {monthNotes.length === 0 && (
+              <div className="flex flex-col items-center justify-center h-full gap-3 py-10">
+                <div
+                  className="w-12 h-12 rounded-2xl flex items-center justify-center"
+                  style={{ background: 'rgba(0,0,0,0.04)' }}
+                >
+                  <Calendar size={22} style={{ color: '#cbd5e1' }} strokeWidth={1.5} />
+                </div>
+                <p className="text-xs font-medium text-center" style={{ color: '#94a3b8' }}>
+                  Sin notas este mes.<br />Haz clic en un día para añadir.
+                </p>
               </div>
             )}
-            {monthEvents.map((ev, i) => {
-              const cat = getCatConfig(ev.type);
+
+            {monthNotes.map((note) => {
+              const cat = getCat(note.category);
+              const Icon = cat.icon;
               return (
                 <div
-                  key={i}
-                  className={`flex items-start gap-3 p-3 rounded-xl border ${cat.bgClass} ${cat.borderClass} ${cat.textClass} group`}
+                  key={note.id}
+                  className={`group rounded-xl border p-3 transition-all hover:shadow-sm ${cat.bg} ${cat.border}`}
                 >
-                  <div className="mt-0.5 shrink-0"><EventIcon type={ev.type} size={13} /></div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold leading-tight" style={{ color: '#0f172a' }}>{ev.label}</p>
-                    <p className="text-[11px] mt-0.5" style={{ color: '#475569' }}>{formatDateLabel(ev.date)}</p>
-                    {ev.assignee && (
-                      <p className="text-[10px] mt-0.5 text-amber-700">{ev.assignee}</p>
-                    )}
+                  <div className="flex items-start gap-2.5">
+                    <div className={`mt-0.5 shrink-0 w-6 h-6 rounded-lg flex items-center justify-center border ${cat.bg} ${cat.border}`}>
+                      <Icon size={12} strokeWidth={2} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold leading-snug truncate" style={{ color: '#0f172a' }}>{note.title}</p>
+                      <p className="text-[10px] mt-0.5 font-medium capitalize" style={{ color: '#64748b' }}>
+                        {formatDayShort(note.date)}
+                      </p>
+                      {note.description && (
+                        <p className="text-[10px] mt-1 leading-relaxed line-clamp-2" style={{ color: '#475569' }}>
+                          {note.description}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => openEdit(note, e)}
+                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/80 transition-colors"
+                        style={{ color: '#64748b' }}
+                        title="Editar"
+                      >
+                        <Pencil size={11} />
+                      </button>
+                      <button
+                        onClick={(e) => confirmDelete(note.id, e)}
+                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors"
+                        style={{ color: '#94a3b8' }}
+                        title="Eliminar"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    </div>
                   </div>
-                  {ev.source === 'manual' && (
-                    <button
-                      onClick={() => deleteEvent(ev)}
-                      className="shrink-0 p-1.5 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 rounded-lg hover:bg-red-50 min-w-[32px] min-h-[32px] flex items-center justify-center"
-                      style={{ color: '#94a3b8' }}
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  )}
                 </div>
               );
             })}
@@ -351,65 +391,130 @@ export default function CalendarioReservas() {
         </div>
       </div>
 
+      {/* Add / Edit note modal */}
       <Modal
-        isOpen={showNewEvent}
-        onClose={() => setShowNewEvent(false)}
-        title="Nuevo evento"
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editingId ? 'Editar nota' : 'Nueva nota'}
         size="sm"
         footer={
           <div className="flex gap-3">
-            <button onClick={() => setShowNewEvent(false)} className="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-100 text-sm font-medium transition-all" style={{ color: '#475569' }}>
+            <button
+              onClick={() => setModalOpen(false)}
+              className="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-100 text-sm font-medium transition-all"
+              style={{ color: '#475569' }}
+            >
               Cancelar
             </button>
-            <button onClick={saveNewEvent} disabled={saving || !newEventTitle.trim() || !newEventDate} className="flex-1 japan-btn-primary gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
-              {saving ? 'Guardando...' : 'Crear evento'}
+            <button
+              onClick={saveNote}
+              disabled={!form.title.trim()}
+              className="flex-1 japan-btn-primary gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Save size={14} />
+              {editingId ? 'Guardar cambios' : 'Añadir nota'}
             </button>
           </div>
         }
       >
         <div className="space-y-4">
-          <div>
-            <label className="text-[10px] font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: '#475569' }}>Título</label>
-            <input
-              value={newEventTitle}
-              onChange={(e) => setNewEventTitle(e.target.value)}
-              placeholder="Nombre del evento..."
-              className="japan-input w-full"
-              onKeyDown={(e) => e.key === 'Enter' && saveNewEvent()}
-              autoFocus
-            />
-          </div>
+          {/* Date (read-only display when adding from cell) */}
           <div>
             <label className="text-[10px] font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: '#475569' }}>
-              <span className="flex items-center gap-1"><Calendar size={10} /> Fecha</span>
+              Fecha
             </label>
             <input
               type="date"
-              value={newEventDate}
-              onChange={(e) => setNewEventDate(e.target.value)}
+              value={modalDate}
+              onChange={(e) => setModalDate(e.target.value)}
               className="japan-input w-full"
             />
           </div>
+
+          {/* Title */}
           <div>
-            <label className="text-[10px] font-semibold uppercase tracking-wider mb-2 block" style={{ color: '#475569' }}>Categoría</label>
+            <label className="text-[10px] font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: '#475569' }}>
+              Título corto
+            </label>
+            <input
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              placeholder="Ej: Pagar reserva Gion Hatanaka"
+              className="japan-input w-full"
+              onKeyDown={(e) => e.key === 'Enter' && saveNote()}
+              autoFocus
+            />
+          </div>
+
+          {/* Category */}
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-wider mb-2 block" style={{ color: '#475569' }}>
+              Categoría
+            </label>
             <div className="grid grid-cols-2 gap-2">
-              {EVENT_CATEGORIES.map((cat) => (
-                <button
-                  key={cat.value}
-                  type="button"
-                  onClick={() => setNewEventType(cat.value)}
-                  className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all ${
-                    newEventType === cat.value
-                      ? `${cat.bgClass} ${cat.borderClass} ${cat.textClass}`
-                      : 'border-slate-300 hover:border-slate-400'
-                  }`}
-                  style={newEventType === cat.value ? undefined : { color: '#475569' }}
-                >
-                  <EventIcon type={cat.value} size={12} />
-                  {cat.label}
-                </button>
-              ))}
+              {CATEGORIES.map((cat) => {
+                const Icon = cat.icon;
+                const active = form.category === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setForm({ ...form, category: cat.id })}
+                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all ${
+                      active ? `${cat.bg} ${cat.border} ${cat.text}` : 'border-slate-300 hover:border-slate-400'
+                    }`}
+                    style={active ? undefined : { color: '#475569' }}
+                  >
+                    <Icon size={12} strokeWidth={2} />
+                    <span className="truncate">{cat.label}</span>
+                  </button>
+                );
+              })}
             </div>
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: '#475569' }}>
+              Descripción / Código de enlace
+            </label>
+            <textarea
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              rows={3}
+              placeholder="Notas rápidas, código de reserva, URL..."
+              className="japan-input resize-none text-sm w-full"
+            />
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete confirm modal */}
+      <Modal
+        isOpen={!!deleteConfirmId}
+        onClose={() => setDeleteConfirmId(null)}
+        title="Eliminar nota"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm font-medium" style={{ color: '#1e3a5f' }}>
+            ¿Eliminar esta nota? Esta acción no se puede deshacer.
+          </p>
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => setDeleteConfirmId(null)}
+              className="japan-btn border border-slate-300 hover:bg-slate-100"
+              style={{ color: '#475569' }}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={deleteNote}
+              className="japan-btn-danger gap-2"
+            >
+              <Trash2 size={14} />
+              <span>Eliminar</span>
+            </button>
           </div>
         </div>
       </Modal>
