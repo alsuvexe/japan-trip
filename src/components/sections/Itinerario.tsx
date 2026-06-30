@@ -241,16 +241,27 @@ export default function Itinerario({ initialCityId, initialDayDate }: Itinerario
                 <div
                   className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-lg"
                   style={{
-                    background: glass.badgeBg,
-                    border: `1px solid ${glass.border}`,
+                    background: 'rgba(255,255,255,0.18)',
+                    border: '1px solid rgba(255,255,255,0.25)',
                     backdropFilter: 'blur(8px)',
                     WebkitBackdropFilter: 'blur(8px)',
                   }}
                 >
                   <span className="text-[11px] leading-none">{weather.icon}</span>
-                  <span className="text-[11px] font-bold" style={{ color: glass.badgeText }}>{weather.temp}°C</span>
+                  <span className="text-[11px] font-bold text-white">{weather.temp}°C</span>
                 </div>
               )}
+
+              {/* Invisible weather fetcher — no rendered output */}
+              <div className="hidden">
+                <WeatherWidgetCompact
+                  lat={city.lat}
+                  lon={city.lon}
+                  cityId={city.id}
+                  textColor={city.textColor}
+                  onData={handleWeatherData(city.id)}
+                />
+              </div>
 
               {/* Card body */}
               <div className="p-5">
@@ -258,10 +269,10 @@ export default function Itinerario({ initialCityId, initialDayDate }: Itinerario
                 <div className="flex items-start gap-3 mb-3">
                   <span className="text-3xl leading-none">{city.icon}</span>
                   <div className="flex-1 min-w-0 pt-0.5">
-                    <p className="text-lg font-extrabold leading-none mb-0.5" style={{ color: '#0f172a', letterSpacing: '-0.02em' }}>
+                    <p className="text-lg font-extrabold leading-none mb-1 text-white" style={{ letterSpacing: '-0.02em' }}>
                       {city.name}
                     </p>
-                    <p className="text-[11px] font-mono" style={{ color: '#64748b' }}>
+                    <p className="text-[11px] font-mono text-white/75">
                       {cityDateRanges[city.id] ?? city.dates}
                     </p>
                   </div>
@@ -271,54 +282,34 @@ export default function Itinerario({ initialCityId, initialDayDate }: Itinerario
                 <div className="flex items-center gap-2 mb-4">
                   {stats ? (
                     <>
-                      <span
-                        className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold"
-                        style={{ background: glass.chipBg, color: glass.chipText }}
-                      >
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold text-white border border-white/20" style={{ background: 'rgba(255,255,255,0.12)' }}>
                         {stats.days} {stats.days === 1 ? 'día' : 'días'}
                       </span>
-                      <span
-                        className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold"
-                        style={{ background: glass.chipBg, color: glass.chipText }}
-                      >
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold text-white border border-white/20" style={{ background: 'rgba(255,255,255,0.12)' }}>
                         {stats.activities} actividades
                       </span>
                     </>
                   ) : (
-                    <div className="h-5 w-28 rounded-md animate-pulse" style={{ background: 'rgba(0,0,0,0.06)' }} />
+                    <div className="h-5 w-28 rounded-md animate-pulse" style={{ background: 'rgba(255,255,255,0.12)' }} />
                   )}
                 </div>
 
-                {/* Weather compact + chevron */}
+                {/* Weather description + chevron */}
                 <div className="flex items-center justify-between">
-                  <div className="opacity-0 pointer-events-none">
-                    {/* WeatherWidgetCompact used only for fetching — renders invisible here */}
-                    <WeatherWidgetCompact
-                      lat={city.lat}
-                      lon={city.lon}
-                      cityId={city.id}
-                      textColor={city.textColor}
-                      onData={handleWeatherData(city.id)}
-                    />
-                  </div>
-
-                  {/* Weather inline display */}
                   {weather ? (
-                    <span className="text-xs font-medium" style={{ color: '#475569' }}>
+                    <span className="text-xs font-medium text-white/70">
                       {weather.description}
                     </span>
                   ) : (
-                    <div className="h-4 w-20 rounded animate-pulse" style={{ background: 'rgba(0,0,0,0.06)' }} />
+                    <div className="h-4 w-20 rounded animate-pulse" style={{ background: 'rgba(255,255,255,0.12)' }} />
                   )}
 
                   {/* Chevron CTA */}
                   <div
-                    className="flex items-center justify-center w-8 h-8 rounded-xl transition-all duration-200 group-hover:translate-x-0.5"
-                    style={{
-                      background: glass.chipBg,
-                      border: `1px solid ${glass.border}`,
-                      color: glass.chipText,
-                    }}
+                    className="flex items-center justify-center w-8 h-8 rounded-xl transition-all duration-200 group-hover:translate-x-0.5 text-white"
+                    style={{ background: 'rgba(255,255,255,0.20)', border: '1px solid rgba(255,255,255,0.25)' }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.30)'; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.20)'; }}
                   >
                     <ChevronRight size={15} strokeWidth={2.5} />
                   </div>
