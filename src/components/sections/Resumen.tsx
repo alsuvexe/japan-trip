@@ -717,8 +717,8 @@ export default function Resumen({ onSectionChange }: ResumenProps) {
               />
 
               <div className="relative z-10 p-5">
-                {/* Top row: floating icon + arrow */}
-                <div className="flex items-start justify-between mb-3">
+                {/* Top row: floating icon */}
+                <div className="flex items-start mb-3">
                   <motion.span
                     className="text-4xl leading-none select-none"
                     animate={{ y: [0, -4, 0] }}
@@ -726,14 +726,6 @@ export default function Resumen({ onSectionChange }: ResumenProps) {
                   >
                     {city.icon}
                   </motion.span>
-                  <motion.div
-                    className="flex items-center justify-center w-7 h-7 rounded-full"
-                    style={{ background: `${theme.accentSolid}18` }}
-                    whileHover={{ x: 3 }}
-                    transition={{ type: 'spring', stiffness: 400 }}
-                  >
-                    <ChevronRight size={14} style={{ color: theme.accentSolid }} strokeWidth={2.5} />
-                  </motion.div>
                 </div>
 
                 {/* City name */}
