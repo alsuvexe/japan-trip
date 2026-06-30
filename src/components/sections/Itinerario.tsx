@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, ChevronRight } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import JapanMap, { CITIES, type CityConfig } from '../itinerario/JapanMap';
 import CityDetailPanel from '../itinerario/CityDetailPanel';
 import type { WeatherData } from '../itinerario/WeatherWidget';
@@ -196,7 +196,7 @@ export default function Itinerario({ initialCityId, initialDayDate }: Itinerario
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg"
             style={{ background: 'rgba(255,255,255,0.80)', border: '1px solid rgba(255,255,255,0.60)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
           >
-            <span className="text-[10px] font-mono tracking-widest uppercase" style={{ color: '#475569' }}>日本 · Diciembre 2025</span>
+            <span className="text-[10px] font-mono tracking-widest uppercase" style={{ color: '#475569' }}>日本 · Diciembre 2026</span>
           </div>
         </div>
         <div className="px-4 pt-10 pb-0 sm:px-6 sm:pt-12">
@@ -292,22 +292,12 @@ export default function Itinerario({ initialCityId, initialDayDate }: Itinerario
                   ) : null}
                 </div>
 
-                {/* Weather description + chevron */}
-                <div className="flex items-center justify-between">
+                {/* Weather description */}
+                {weather?.description && (
                   <span className="text-xs font-medium text-white/70">
-                    {weather?.description ?? ''}
+                    {weather.description}
                   </span>
-
-                  {/* Chevron CTA */}
-                  <div
-                    className="flex items-center justify-center w-8 h-8 rounded-xl transition-all duration-200 group-hover:translate-x-0.5 text-white shrink-0"
-                    style={{ background: 'rgba(255,255,255,0.20)', border: '1px solid rgba(255,255,255,0.25)' }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.30)'; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.20)'; }}
-                  >
-                    <ChevronRight size={15} strokeWidth={2.5} />
-                  </div>
-                </div>
+                )}
               </div>
             </motion.button>
           );
