@@ -289,24 +289,18 @@ export default function Itinerario({ initialCityId, initialDayDate }: Itinerario
                         {stats.activities} actividades
                       </span>
                     </>
-                  ) : (
-                    <div className="h-5 w-28 rounded-md animate-pulse" style={{ background: 'rgba(255,255,255,0.12)' }} />
-                  )}
+                  ) : null}
                 </div>
 
                 {/* Weather description + chevron */}
                 <div className="flex items-center justify-between">
-                  {weather ? (
-                    <span className="text-xs font-medium text-white/70">
-                      {weather.description}
-                    </span>
-                  ) : (
-                    <div className="h-4 w-20 rounded animate-pulse" style={{ background: 'rgba(255,255,255,0.12)' }} />
-                  )}
+                  <span className="text-xs font-medium text-white/70">
+                    {weather?.description ?? ''}
+                  </span>
 
                   {/* Chevron CTA */}
                   <div
-                    className="flex items-center justify-center w-8 h-8 rounded-xl transition-all duration-200 group-hover:translate-x-0.5 text-white"
+                    className="flex items-center justify-center w-8 h-8 rounded-xl transition-all duration-200 group-hover:translate-x-0.5 text-white shrink-0"
                     style={{ background: 'rgba(255,255,255,0.20)', border: '1px solid rgba(255,255,255,0.25)' }}
                     onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.30)'; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.20)'; }}
