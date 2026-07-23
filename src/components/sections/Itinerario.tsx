@@ -1,11 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { FileText } from 'lucide-react';
 import JapanMap, { CITIES, type CityConfig } from '../itinerario/JapanMap';
 import CityDetailPanel from '../itinerario/CityDetailPanel';
-import type { WeatherData } from '../itinerario/WeatherWidget';
-import { WeatherWidgetCompact } from '../itinerario/WeatherWidget';
-import { supabase } from '../../lib/supabase';
 import { exportFullItineraryToPdf } from '../../lib/exportDayPdf';
 
 interface ItinerarioProps {
@@ -13,18 +10,34 @@ interface ItinerarioProps {
   initialDayDate?: string;
 }
 
-interface CityStats {
-  days: number;
-  activities: number;
+interface CityWeather {
+  temp: number;
+  icon: string;
+  label: string;
+}
+
+type WeatherState = 'loading' | 'loaded' | 'error';
+
+function mapWeatherCode(code: number): { icon: string; label: string } {
+  if (code === 0) return { icon: '☀️', label: 'Despejado' };
+  if (code <= 2) return { icon: '🌤️', label: 'Mayormente despejado' };
+  if (code === 3) return { icon: '⛅', label: 'Parcialmente nublado' };
+  if (code <= 48) return { icon: '🌫️', label: 'Niebla' };
+  if (code <= 57) return { icon: '🌧️', label: 'Llovizna' };
+  if (code <= 67) return { icon: '🌧️', label: 'Lluvia' };
+  if (code <= 77) return { icon: '❄️', label: 'Nieve' };
+  if (code <= 82) return { icon: '🌦️', label: 'Chubascos' };
+  if (code <= 86) return { icon: '🌨️', label: 'Nieve intensa' };
+  if (code <= 99) return { icon: '⛈️', label: 'Tormenta' };
+  return { icon: '🌡️', label: 'Variable' };
 }
 
 export default function Itinerario({ initialCityId, initialDayDate }: ItinerarioProps) {
   const [selectedCity, setSelectedCity] = useState<CityConfig | null>(
     () => (initialCityId ? CITIES.find((c) => c.id === initialCityId) ?? null : null),
   );
-  const [weatherData, setWeatherData] = useState<Record<string, WeatherData>>({});
-  const [cityDateRanges, setCityDateRanges] = useState<Record<string, string>>({});
-  const [cityStats, setCityStats] = useState<Record<string, CityStats>>({});
+  const [weather, setWeather] = useState<Record<string, CityWeather>>({});
+  const [weatherState, setWeatherState] = useState<Record<string, WeatherState>>({});
   const [exportingPdf, setExportingPdf] = useState(false);
 
   const handleExportPdf = async () => {
@@ -37,51 +50,25 @@ export default function Itinerario({ initialCityId, initialDayDate }: Itinerario
   };
 
   useEffect(() => {
-    const fmtDate = (d: string) =>
-      new Date(d + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
-
-    Promise.all(
-      CITIES.map((city) =>
-        supabase
-          .from('itinerary_days')
-          .select('id, date')
-          .eq('city', city.id)
-          .order('date', { ascending: true })
-          .then(async ({ data: days }) => {
-            let range = city.dates;
-            if (days && days.length > 0) {
-              const first = fmtDate(days[0].date);
-              const last = fmtDate(days[days.length - 1].date);
-              range = first === last ? first : `${first} – ${last}`;
-            }
-
-            const dayIds = (days ?? []).map((d) => d.id);
-            let activityCount = 0;
-            if (dayIds.length > 0) {
-              const { count } = await supabase
-                .from('day_activities')
-                .select('id', { count: 'exact', head: true })
-                .in('day_id', dayIds);
-              activityCount = count ?? 0;
-            }
-
-            return [city.id, { range, days: days?.length ?? 0, activities: activityCount }] as const;
-          })
-      )
-    ).then((entries) => {
-      const ranges: Record<string, string> = {};
-      const stats: Record<string, CityStats> = {};
-      for (const [id, { range, days, activities }] of entries) {
-        ranges[id] = range;
-        stats[id] = { days, activities };
+    CITIES.forEach(async (city) => {
+      setWeatherState((prev) => ({ ...prev, [city.id]: 'loading' }));
+      try {
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}&current_weather=true`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Weather fetch failed');
+        const data = await res.json();
+        const cw = data.current_weather;
+        if (!cw) throw new Error('No current weather');
+        const { icon, label } = mapWeatherCode(cw.weathercode);
+        setWeather((prev) => ({
+          ...prev,
+          [city.id]: { temp: Math.round(cw.temperature), icon, label },
+        }));
+        setWeatherState((prev) => ({ ...prev, [city.id]: 'loaded' }));
+      } catch {
+        setWeatherState((prev) => ({ ...prev, [city.id]: 'error' }));
       }
-      setCityDateRanges(ranges);
-      setCityStats(stats);
     });
-  }, []);
-
-  const handleWeatherData = useCallback((cityId: string) => (data: WeatherData) => {
-    setWeatherData((prev) => ({ ...prev, [cityId]: data }));
   }, []);
 
   return (
@@ -133,10 +120,8 @@ export default function Itinerario({ initialCityId, initialDayDate }: Itinerario
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         {CITIES.map((city, i) => {
           const isActive = selectedCity?.id === city.id;
-          const stats = cityStats[city.id];
-          const weather = weatherData[city.id];
-          const nights = stats ? Math.max(1, stats.days - 1) : null;
-          const nightsLabel = nights === 1 ? '1 Noche' : `${nights} Noches`;
+          const w = weather[city.id];
+          const ws = weatherState[city.id];
 
           return (
             <motion.button
@@ -173,52 +158,48 @@ export default function Itinerario({ initialCityId, initialDayDate }: Itinerario
                 />
               )}
 
-              {/* Invisible weather fetcher */}
-              <div className="hidden">
-                <WeatherWidgetCompact
-                  lat={city.lat}
-                  lon={city.lon}
-                  cityId={city.id}
-                  textColor={city.textColor}
-                  onData={handleWeatherData(city.id)}
-                />
-              </div>
-
-              {/* Card content */}
+              {/* Card content — three rows */}
               <div className="p-4 pl-5">
-                {/* Top row: icon + name | weather */}
-                <div className="flex items-center justify-between mb-2.5">
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-2xl leading-none">{city.icon}</span>
-                    <span className="text-lg font-bold leading-none" style={{ color: '#1e293b', letterSpacing: '-0.02em' }}>
-                      {city.name}
-                    </span>
-                  </div>
-                  {weather && (
-                    <div
-                      className="flex items-center gap-1 px-2 py-1 rounded-lg shrink-0"
-                      style={{ background: 'rgba(241,245,249,0.80)' }}
-                    >
-                      <span className="text-sm leading-none">{weather.icon}</span>
-                      <span className="text-sm font-semibold leading-none" style={{ color: '#475569' }}>
-                        {weather.temp}°C
-                      </span>
-                    </div>
-                  )}
+                {/* Row 1: city icon + name */}
+                <div className="flex items-center gap-2.5 mb-2">
+                  <span className="text-2xl leading-none">{city.icon}</span>
+                  <span className="text-lg font-bold leading-none" style={{ color: '#1e293b', letterSpacing: '-0.02em' }}>
+                    {city.name}
+                  </span>
                 </div>
 
-                {/* Bottom row: dates + nights */}
-                <div className="flex items-center gap-2 flex-wrap">
+                {/* Row 2: dates + nights badge */}
+                <div className="flex items-center gap-2 flex-wrap mb-2.5">
                   <span className="text-xs font-medium" style={{ color: '#64748b' }}>
-                    {cityDateRanges[city.id] ?? city.dates} 2026
+                    {city.dates}
                   </span>
-                  {nights !== null && (
-                    <>
-                      <span className="text-xs" style={{ color: '#cbd5e1' }}>·</span>
-                      <span className="text-xs font-bold" style={{ color: city.accentColor }}>
-                        {nightsLabel}
-                      </span>
-                    </>
+                  <span
+                    className="px-2 py-0.5 rounded-md text-xs font-bold"
+                    style={{ background: `${city.accentColor}18`, color: city.accentColor }}
+                  >
+                    {city.nights}
+                  </span>
+                </div>
+
+                {/* Row 3: live weather badge */}
+                <div>
+                  {ws === 'loading' && (
+                    <span className="inline-flex items-center gap-1 bg-slate-100/80 px-2 py-1 rounded-md text-xs text-slate-600 animate-pulse">
+                      Cargando clima...
+                    </span>
+                  )}
+                  {ws === 'loaded' && w && (
+                    <span className="inline-flex items-center gap-1 bg-slate-100/80 px-2 py-1 rounded-md text-xs text-slate-600">
+                      <span className="leading-none">{w.icon}</span>
+                      <span className="font-semibold">{w.temp}°C</span>
+                      <span className="text-slate-400">·</span>
+                      <span>{w.label}</span>
+                    </span>
+                  )}
+                  {ws === 'error' && (
+                    <span className="inline-flex items-center gap-1 bg-slate-100/80 px-2 py-1 rounded-md text-xs text-slate-400">
+                      Clima no disponible
+                    </span>
                   )}
                 </div>
               </div>

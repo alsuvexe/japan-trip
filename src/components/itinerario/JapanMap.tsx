@@ -13,6 +13,7 @@ export interface CityConfig {
   id: string;
   name: string;
   dates: string;
+  nights: string;
   icon: string;
   glowColor: string;
   borderColor: string;
@@ -28,7 +29,8 @@ export const CITIES: CityConfig[] = [
   {
     id: 'Osaka',
     name: 'Osaka',
-    dates: '4 – 6 dic',
+    dates: '4 dic – 7 dic 2026',
+    nights: '3 Noches',
     icon: '🏯',
     glowColor: 'rgba(14,116,144,0.3)',
     borderColor: 'border-cyan-500/40',
@@ -42,7 +44,8 @@ export const CITIES: CityConfig[] = [
   {
     id: 'Kioto',
     name: 'Kioto',
-    dates: '7 – 9 dic',
+    dates: '7 dic – 10 dic 2026',
+    nights: '3 Noches',
     icon: '⛩️',
     glowColor: 'rgba(190,24,93,0.3)',
     borderColor: 'border-pink-500/40',
@@ -56,7 +59,8 @@ export const CITIES: CityConfig[] = [
   {
     id: 'Tokio',
     name: 'Tokio',
-    dates: '10 – 14 dic',
+    dates: '10 dic – 14 dic 2026',
+    nights: '4 Noches',
     icon: '🗼',
     glowColor: 'rgba(14,116,144,0.25)',
     borderColor: 'border-sky-500/40',
