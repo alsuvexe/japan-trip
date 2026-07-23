@@ -28,7 +28,7 @@ export const CITIES: CityConfig[] = [
   {
     id: 'Osaka',
     name: 'Osaka',
-    dates: '3 – 5 dic',
+    dates: '4 – 6 dic',
     icon: '🏯',
     glowColor: 'rgba(14,116,144,0.3)',
     borderColor: 'border-cyan-500/40',
@@ -42,7 +42,7 @@ export const CITIES: CityConfig[] = [
   {
     id: 'Kioto',
     name: 'Kioto',
-    dates: '6 – 9 dic',
+    dates: '7 – 9 dic',
     icon: '⛩️',
     glowColor: 'rgba(190,24,93,0.3)',
     borderColor: 'border-pink-500/40',

@@ -147,7 +147,7 @@ export default function Itinerario({ initialCityId, initialDayDate }: Itinerario
           >
             Itinerario
           </h2>
-          <p className="text-sm font-medium" style={{ color: '#334155' }}>Mapa de ruta interactivo · Japón, Diciembre 2025</p>
+          <p className="text-sm font-medium" style={{ color: '#334155' }}>Mapa de ruta interactivo · Japón, Diciembre 2026</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button
