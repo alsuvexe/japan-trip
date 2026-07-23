@@ -20,16 +20,11 @@ type WeatherState = 'loading' | 'loaded' | 'error';
 
 function mapWeatherCode(code: number): { icon: string; label: string } {
   if (code === 0) return { icon: '☀️', label: 'Despejado' };
-  if (code <= 2) return { icon: '🌤️', label: 'Mayormente despejado' };
-  if (code === 3) return { icon: '⛅', label: 'Parcialmente nublado' };
-  if (code <= 48) return { icon: '🌫️', label: 'Niebla' };
-  if (code <= 57) return { icon: '🌧️', label: 'Llovizna' };
-  if (code <= 67) return { icon: '🌧️', label: 'Lluvia' };
-  if (code <= 77) return { icon: '❄️', label: 'Nieve' };
-  if (code <= 82) return { icon: '🌦️', label: 'Chubascos' };
-  if (code <= 86) return { icon: '🌨️', label: 'Nieve intensa' };
-  if (code <= 99) return { icon: '⛈️', label: 'Tormenta' };
-  return { icon: '🌡️', label: 'Variable' };
+  if (code === 1 || code === 2 || code === 3) return { icon: '⛅', label: 'Parcialmente nublado' };
+  if (code === 45 || code === 48) return { icon: '🌫️', label: 'Niebla' };
+  if ([51, 53, 55, 61, 63, 65].includes(code)) return { icon: '🌧️', label: 'Lluvia' };
+  if ([71, 73, 75].includes(code)) return { icon: '❄️', label: 'Nieve' };
+  return { icon: '🌤️', label: 'Templado' };
 }
 
 export default function Itinerario({ initialCityId, initialDayDate }: ItinerarioProps) {
@@ -50,25 +45,31 @@ export default function Itinerario({ initialCityId, initialDayDate }: Itinerario
   };
 
   useEffect(() => {
+    const controller = new AbortController();
     CITIES.forEach(async (city) => {
       setWeatherState((prev) => ({ ...prev, [city.id]: 'loading' }));
       try {
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}&current_weather=true`;
-        const res = await fetch(url);
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}&current=temperature_2m,weather_code`;
+        const res = await fetch(url, { signal: controller.signal });
         if (!res.ok) throw new Error('Weather fetch failed');
         const data = await res.json();
-        const cw = data.current_weather;
-        if (!cw) throw new Error('No current weather');
-        const { icon, label } = mapWeatherCode(cw.weathercode);
+        const current = data.current;
+        if (!current || current.temperature_2m == null || current.weather_code == null) {
+          throw new Error('No current weather data');
+        }
+        const { icon, label } = mapWeatherCode(current.weather_code);
         setWeather((prev) => ({
           ...prev,
-          [city.id]: { temp: Math.round(cw.temperature), icon, label },
+          [city.id]: { temp: Math.round(current.temperature_2m), icon, label },
         }));
         setWeatherState((prev) => ({ ...prev, [city.id]: 'loaded' }));
       } catch {
-        setWeatherState((prev) => ({ ...prev, [city.id]: 'error' }));
+        if (!controller.signal.aborted) {
+          setWeatherState((prev) => ({ ...prev, [city.id]: 'error' }));
+        }
       }
     });
+    return () => controller.abort();
   }, []);
 
   return (
@@ -185,7 +186,7 @@ export default function Itinerario({ initialCityId, initialDayDate }: Itinerario
                 <div>
                   {ws === 'loading' && (
                     <span className="inline-flex items-center gap-1 bg-slate-100/80 px-2 py-1 rounded-md text-xs text-slate-600 animate-pulse">
-                      Cargando clima...
+                      Cargando...
                     </span>
                   )}
                   {ws === 'loaded' && w && (
