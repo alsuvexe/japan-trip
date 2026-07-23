@@ -4,7 +4,7 @@ import {
   ArrowLeft, PlusCircle, Pencil, Trash2, Save, X,
   Clock, AlertCircle, Paperclip, FileText, ExternalLink,
   Eye, EyeOff, Image as ImageIcon, Link, MapPin, Calendar,
-  FileDown, Navigation,
+  FileDown, Navigation, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { TrainFront, Footprints, Utensils, Camera, Landmark, Sparkles } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -458,9 +458,15 @@ interface DayFullViewProps {
   day: ItineraryDay;
   cityStyle: CityConfig;
   onBack: () => void;
+  days: ItineraryDay[];
+  onNavigateDay: (day: ItineraryDay) => void;
 }
 
-export default function DayFullView({ day, cityStyle, onBack }: DayFullViewProps) {
+export default function DayFullView({ day, cityStyle, onBack, days, onNavigateDay }: DayFullViewProps) {
+  const sortedDays = [...days].sort((a, b) => a.day_number - b.day_number);
+  const currentDayIndex = sortedDays.findIndex((d) => d.id === day.id);
+  const isFirstDay = currentDayIndex <= 0;
+  const isLastDay = currentDayIndex >= sortedDays.length - 1;
   const [activities, setActivities] = useState<DayActivity[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -594,13 +600,31 @@ export default function DayFullView({ day, cityStyle, onBack }: DayFullViewProps
                   <span style={{ color: '#cbd5e1' }}>·</span>
                   <span className={`text-xs font-semibold ${cityStyle.textColor} opacity-80`}>Día {day.day_number}</span>
                 </div>
+                <div className="flex items-center gap-2 mt-2.5">
+                  <button
+                    onClick={() => onNavigateDay(sortedDays[currentDayIndex - 1])}
+                    disabled={isFirstDay}
+                    className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100"
+                    style={{ color: '#475569', borderColor: 'rgba(203,213,225,0.7)', background: 'rgba(255,255,255,0.6)' }}
+                  >
+                    <ChevronLeft size={13} /> Día anterior
+                  </button>
+                  <button
+                    onClick={() => onNavigateDay(sortedDays[currentDayIndex + 1])}
+                    disabled={isLastDay}
+                    className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100"
+                    style={{ color: '#475569', borderColor: 'rgba(203,213,225,0.7)', background: 'rgba(255,255,255,0.6)' }}
+                  >
+                    Día siguiente <ChevronRight size={13} />
+                  </button>
+                </div>
               </div>
             </div>
 
             <button
               onClick={() => setIsAddOpen(true)}
-              className="flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-100 transition-all font-medium shrink-0"
-              style={{ color: '#334155' }}
+              className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg text-white hover:bg-slate-800 transition-all shrink-0"
+              style={{ background: '#0f172a' }}
             >
               <PlusCircle size={15} />
               <span className="hidden sm:inline">Nueva actividad</span>
@@ -619,23 +643,6 @@ export default function DayFullView({ day, cityStyle, onBack }: DayFullViewProps
               <p className="text-base leading-[1.85] whitespace-pre-line" style={{ color: '#1e3a5f' }}>{day.description}</p>
             </div>
           )}
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-bold uppercase tracking-widest" style={{ color: '#475569' }}>Actividades</span>
-              {activities.length > 0 && (
-                <span className={`text-xs font-bold px-2.5 py-0.5 rounded-lg ${cityStyle.bgColor} ${cityStyle.textColor} border ${cityStyle.borderColor}`}>
-                  {activities.length}
-                </span>
-              )}
-            </div>
-            <button
-              onClick={() => setIsAddOpen(true)}
-              className="flex items-center gap-1.5 text-sm text-cyan-700 hover:text-cyan-600 transition-colors py-1.5 px-3 rounded-xl hover:bg-cyan-50"
-            >
-              <PlusCircle size={14} /> Añadir
-            </button>
-          </div>
 
           {activities.length === 0 ? (
             <button

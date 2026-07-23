@@ -331,6 +331,8 @@ export default function CityDetailPanel({ city, onClose, initialDayDate }: CityD
                 day={selectedDay}
                 cityStyle={city}
                 onBack={() => setSelectedDay(null)}
+                days={days}
+                onNavigateDay={(d) => setSelectedDay(d)}
               />
             )}
           </AnimatePresence>
