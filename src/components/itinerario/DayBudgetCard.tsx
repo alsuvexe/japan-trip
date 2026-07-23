@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle2, AlertTriangle, RotateCcw } from 'lucide-react';
+import Modal from '../Modal';
 
 const EUR_RATE = 165;
 
@@ -11,7 +12,7 @@ interface CategoryBudget {
 type BudgetMap = Record<string, CategoryBudget>;
 
 const CATEGORIES = [
-  { id: 'food', label: 'Comida y Comedor', icon: '🍜' },
+  { id: 'food', label: 'Comida', icon: '🍜' },
   { id: 'transport', label: 'Transporte Local', icon: '🚆' },
   { id: 'tickets', label: 'Entradas y Experiencias', icon: '🎟️' },
   { id: 'shopping', label: 'Compras y Varios', icon: '🛍️' },
@@ -48,6 +49,8 @@ function fmtEUR(n: number) {
 
 export default function DayBudgetCard({ dayId }: { dayId: string }) {
   const [budget, setBudget] = useState<BudgetMap>(() => loadBudget(dayId));
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   useEffect(() => {
     setBudget(loadBudget(dayId));
@@ -65,7 +68,16 @@ export default function DayBudgetCard({ dayId }: { dayId: string }) {
     setBudget((prev) => ({ ...prev, [catId]: { ...prev[catId], [field]: value } }));
   };
 
-  const reset = () => setBudget({ ...EMPTY_BUDGET });
+  const reset = () => {
+    setBudget({ ...EMPTY_BUDGET });
+    setShowResetConfirm(false);
+  };
+
+  const fieldDisplayValue = (catId: string, field: keyof CategoryBudget, value: number) => {
+    const key = `${catId}-${field}`;
+    if (focusedField === key) return value ? String(value) : '';
+    return value ? value.toLocaleString('es-ES') : '';
+  };
 
   const totalEstimated = Object.values(budget).reduce((s, c) => s + (c.estimated || 0), 0);
   const totalReal = Object.values(budget).reduce((s, c) => s + (c.real || 0), 0);
@@ -81,7 +93,7 @@ export default function DayBudgetCard({ dayId }: { dayId: string }) {
           <span>Presupuesto y Gastos del Día</span>
         </h3>
         <button
-          onClick={reset}
+          onClick={() => setShowResetConfirm(true)}
           className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition-all"
           style={{ color: '#64748b' }}
         >
@@ -105,10 +117,12 @@ export default function DayBudgetCard({ dayId }: { dayId: string }) {
                   <div className="relative">
                     <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-bold" style={{ color: '#94a3b8' }}>¥</span>
                     <input
-                      type="number"
-                      min={0}
-                      value={b.estimated || ''}
-                      onChange={(e) => updateField(cat.id, 'estimated', parseInt(e.target.value, 10) || 0)}
+                      type="text"
+                      inputMode="numeric"
+                      value={fieldDisplayValue(cat.id, 'estimated', b.estimated || 0)}
+                      onChange={(e) => updateField(cat.id, 'estimated', parseInt(e.target.value.replace(/\D/g, ''), 10) || 0)}
+                      onFocus={() => setFocusedField(`${cat.id}-estimated`)}
+                      onBlur={() => setFocusedField(null)}
                       placeholder="0"
                       className="w-full pl-6 pr-2 py-2 rounded-lg border border-slate-200 bg-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-400 transition-all"
                       style={{ color: '#0f172a' }}
@@ -120,10 +134,12 @@ export default function DayBudgetCard({ dayId }: { dayId: string }) {
                   <div className="relative">
                     <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-bold" style={{ color: '#94a3b8' }}>¥</span>
                     <input
-                      type="number"
-                      min={0}
-                      value={b.real || ''}
-                      onChange={(e) => updateField(cat.id, 'real', parseInt(e.target.value, 10) || 0)}
+                      type="text"
+                      inputMode="numeric"
+                      value={fieldDisplayValue(cat.id, 'real', b.real || 0)}
+                      onChange={(e) => updateField(cat.id, 'real', parseInt(e.target.value.replace(/\D/g, ''), 10) || 0)}
+                      onFocus={() => setFocusedField(`${cat.id}-real`)}
+                      onBlur={() => setFocusedField(null)}
                       placeholder="0"
                       className="w-full pl-6 pr-2 py-2 rounded-lg border border-slate-200 bg-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-400 transition-all"
                       style={{ color: '#0f172a' }}
@@ -191,6 +207,34 @@ export default function DayBudgetCard({ dayId }: { dayId: string }) {
       <p className="mt-3 text-[10px] text-center" style={{ color: '#94a3b8' }}>
         Tipo de cambio: 1 € = {EUR_RATE} ¥ · Los datos se guardan automáticamente
       </p>
+
+      <Modal
+        isOpen={showResetConfirm}
+        onClose={() => setShowResetConfirm(false)}
+        title="Reiniciar presupuesto"
+        size="sm"
+      >
+        <div className="space-y-5">
+          <p className="text-sm" style={{ color: '#334155' }}>
+            ¿Estás seguro de que quieres borrar los gastos registrados de este día?
+          </p>
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => setShowResetConfirm(false)}
+              className="px-4 py-2 rounded-lg text-sm font-medium border border-slate-200 hover:bg-slate-50 transition-all"
+              style={{ color: '#475569' }}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={reset}
+              className="japan-btn-danger gap-2 text-sm"
+            >
+              <RotateCcw size={14} /> Sí, reiniciar
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
