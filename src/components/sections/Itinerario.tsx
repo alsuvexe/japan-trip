@@ -7,55 +7,11 @@ import type { WeatherData } from '../itinerario/WeatherWidget';
 import { WeatherWidgetCompact } from '../itinerario/WeatherWidget';
 import { supabase } from '../../lib/supabase';
 import { exportFullItineraryToPdf } from '../../lib/exportDayPdf';
-import { useAdmin } from '../../lib/AdminContext';
 
 interface ItinerarioProps {
   initialCityId?: string;
   initialDayDate?: string;
 }
-
-// Per-city vivid glassmorphism gradient configs
-const CITY_GLASS: Record<string, {
-  gradient: string;
-  glow: string;
-  border: string;
-  badgeBg: string;
-  badgeText: string;
-  chipBg: string;
-  chipText: string;
-  shimmer: string;
-}> = {
-  Osaka: {
-    gradient: 'linear-gradient(135deg, rgba(236,72,153,0.22) 0%, rgba(190,24,93,0.14) 40%, rgba(14,116,144,0.10) 100%)',
-    glow: 'rgba(236,72,153,0.18)',
-    border: 'rgba(236,72,153,0.30)',
-    badgeBg: 'rgba(236,72,153,0.15)',
-    badgeText: '#be185d',
-    chipBg: 'rgba(14,116,144,0.12)',
-    chipText: '#0e7490',
-    shimmer: 'rgba(255,255,255,0.55)',
-  },
-  Kioto: {
-    gradient: 'linear-gradient(135deg, rgba(251,146,60,0.22) 0%, rgba(220,38,38,0.14) 40%, rgba(190,24,93,0.10) 100%)',
-    glow: 'rgba(251,146,60,0.20)',
-    border: 'rgba(220,38,38,0.28)',
-    badgeBg: 'rgba(220,38,38,0.13)',
-    badgeText: '#b91c1c',
-    chipBg: 'rgba(251,146,60,0.12)',
-    chipText: '#b45309',
-    shimmer: 'rgba(255,255,255,0.55)',
-  },
-  Tokio: {
-    gradient: 'linear-gradient(135deg, rgba(56,189,248,0.22) 0%, rgba(14,116,144,0.16) 40%, rgba(30,64,175,0.10) 100%)',
-    glow: 'rgba(56,189,248,0.18)',
-    border: 'rgba(56,189,248,0.30)',
-    badgeBg: 'rgba(14,116,144,0.13)',
-    badgeText: '#0e7490',
-    chipBg: 'rgba(56,189,248,0.12)',
-    chipText: '#0369a1',
-    shimmer: 'rgba(255,255,255,0.55)',
-  },
-};
 
 interface CityStats {
   days: number;
@@ -70,7 +26,6 @@ export default function Itinerario({ initialCityId, initialDayDate }: Itinerario
   const [cityDateRanges, setCityDateRanges] = useState<Record<string, string>>({});
   const [cityStats, setCityStats] = useState<Record<string, CityStats>>({});
   const [exportingPdf, setExportingPdf] = useState(false);
-  const { isAdmin } = useAdmin();
 
   const handleExportPdf = async () => {
     setExportingPdf(true);
@@ -93,7 +48,6 @@ export default function Itinerario({ initialCityId, initialDayDate }: Itinerario
           .eq('city', city.id)
           .order('date', { ascending: true })
           .then(async ({ data: days }) => {
-            // Date range label
             let range = city.dates;
             if (days && days.length > 0) {
               const first = fmtDate(days[0].date);
@@ -101,7 +55,6 @@ export default function Itinerario({ initialCityId, initialDayDate }: Itinerario
               range = first === last ? first : `${first} – ${last}`;
             }
 
-            // Activity count
             const dayIds = (days ?? []).map((d) => d.id);
             let activityCount = 0;
             if (dayIds.length > 0) {
@@ -176,7 +129,105 @@ export default function Itinerario({ initialCityId, initialDayDate }: Itinerario
         </div>
       </div>
 
-      {/* Map — floating glass frame */}
+      {/* City cards — interactive tabs (above the map) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        {CITIES.map((city, i) => {
+          const isActive = selectedCity?.id === city.id;
+          const stats = cityStats[city.id];
+          const weather = weatherData[city.id];
+          const nights = stats ? Math.max(1, stats.days - 1) : null;
+          const nightsLabel = nights === 1 ? '1 Noche' : `${nights} Noches`;
+
+          return (
+            <motion.button
+              key={city.id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.08, duration: 0.35, ease: 'easeOut' }}
+              onClick={() => setSelectedCity(city)}
+              className={`relative text-left rounded-2xl overflow-hidden transition-all duration-300 bg-white/90 backdrop-blur-md ${
+                isActive
+                  ? 'border-2 border-red-500 shadow-md'
+                  : 'border border-slate-200/70 shadow-sm hover:shadow-md hover:border-slate-300'
+              }`}
+              style={
+                isActive
+                  ? { boxShadow: '0 4px 6px -1px rgba(239,68,68,0.12), 0 2px 4px -2px rgba(239,68,68,0.08)' }
+                  : undefined
+              }
+              whileHover={{ scale: isActive ? 1.01 : 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              {/* Left accent bar in city color */}
+              <div
+                className="absolute top-0 left-0 bottom-0 w-1"
+                style={{ background: city.accentColor, opacity: isActive ? 1 : 0.35 }}
+              />
+
+              {/* Active indicator dot */}
+              {isActive && (
+                <motion.div
+                  layoutId="active-dot"
+                  className="absolute top-3 right-3 w-2.5 h-2.5 rounded-full bg-red-500"
+                  style={{ boxShadow: '0 0 0 3px rgba(239,68,68,0.18)' }}
+                />
+              )}
+
+              {/* Invisible weather fetcher */}
+              <div className="hidden">
+                <WeatherWidgetCompact
+                  lat={city.lat}
+                  lon={city.lon}
+                  cityId={city.id}
+                  textColor={city.textColor}
+                  onData={handleWeatherData(city.id)}
+                />
+              </div>
+
+              {/* Card content */}
+              <div className="p-4 pl-5">
+                {/* Top row: icon + name | weather */}
+                <div className="flex items-center justify-between mb-2.5">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-2xl leading-none">{city.icon}</span>
+                    <span className="text-lg font-bold leading-none" style={{ color: '#1e293b', letterSpacing: '-0.02em' }}>
+                      {city.name}
+                    </span>
+                  </div>
+                  {weather && (
+                    <div
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg shrink-0"
+                      style={{ background: 'rgba(241,245,249,0.80)' }}
+                    >
+                      <span className="text-sm leading-none">{weather.icon}</span>
+                      <span className="text-sm font-semibold leading-none" style={{ color: '#475569' }}>
+                        {weather.temp}°C
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Bottom row: dates + nights */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-medium" style={{ color: '#64748b' }}>
+                    {cityDateRanges[city.id] ?? city.dates} 2026
+                  </span>
+                  {nights !== null && (
+                    <>
+                      <span className="text-xs" style={{ color: '#cbd5e1' }}>·</span>
+                      <span className="text-xs font-bold" style={{ color: city.accentColor }}>
+                        {nightsLabel}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </motion.button>
+          );
+        })}
+      </div>
+
+      {/* Map — floating glass frame (below the city cards) */}
       <div
         className="relative rounded-3xl overflow-hidden"
         style={{
@@ -200,108 +251,12 @@ export default function Itinerario({ initialCityId, initialDayDate }: Itinerario
           </div>
         </div>
         <div className="px-4 pt-10 pb-0 sm:px-6 sm:pt-12">
-          <JapanMap onCityClick={setSelectedCity} selectedCityId={selectedCity?.id} />
+          <JapanMap
+            onCityClick={setSelectedCity}
+            selectedCityId={selectedCity?.id}
+            focusCityId={selectedCity?.id ?? null}
+          />
         </div>
-      </div>
-
-      {/* City cards — vivid glassmorphism */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {CITIES.map((city, i) => {
-          const glass = CITY_GLASS[city.id] ?? CITY_GLASS['Osaka'];
-          const stats = cityStats[city.id];
-          const weather = weatherData[city.id];
-
-          return (
-            <motion.button
-              key={city.id}
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 + i * 0.12, duration: 0.4, ease: 'easeOut' }}
-              onClick={() => setSelectedCity(city)}
-              className="relative text-left rounded-2xl overflow-hidden group"
-              style={{
-                background: glass.gradient,
-                backdropFilter: 'blur(20px)',
-                WebkitBackdropFilter: 'blur(20px)',
-                border: `1px solid ${glass.border}`,
-                boxShadow: `0 4px 24px ${glass.glow}, 0 1px 0 rgba(255,255,255,0.55) inset`,
-                transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-              }}
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              {/* Top shimmer line */}
-              <div
-                className="absolute top-0 left-0 right-0 h-px"
-                style={{ background: `linear-gradient(90deg, transparent, ${glass.shimmer}, transparent)` }}
-              />
-
-              {/* Weather badge — top right */}
-              {weather && (
-                <div
-                  className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-lg"
-                  style={{
-                    background: 'rgba(255,255,255,0.18)',
-                    border: '1px solid rgba(255,255,255,0.25)',
-                    backdropFilter: 'blur(8px)',
-                    WebkitBackdropFilter: 'blur(8px)',
-                  }}
-                >
-                  <span className="text-[11px] leading-none">{weather.icon}</span>
-                  <span className="text-[11px] font-bold text-white">{weather.temp}°C</span>
-                </div>
-              )}
-
-              {/* Invisible weather fetcher — no rendered output */}
-              <div className="hidden">
-                <WeatherWidgetCompact
-                  lat={city.lat}
-                  lon={city.lon}
-                  cityId={city.id}
-                  textColor={city.textColor}
-                  onData={handleWeatherData(city.id)}
-                />
-              </div>
-
-              {/* Card body */}
-              <div className="p-5">
-                {/* Icon + name */}
-                <div className="flex items-start gap-3 mb-3">
-                  <span className="text-3xl leading-none">{city.icon}</span>
-                  <div className="flex-1 min-w-0 pt-0.5">
-                    <p className="text-lg font-extrabold leading-none mb-1 text-white" style={{ letterSpacing: '-0.02em' }}>
-                      {city.name}
-                    </p>
-                    <p className="text-[11px] font-mono text-white/75">
-                      {cityDateRanges[city.id] ?? city.dates}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Stats chip row */}
-                <div className="flex items-center gap-2 mb-4">
-                  {stats ? (
-                    <>
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold text-white border border-white/20" style={{ background: 'rgba(255,255,255,0.12)' }}>
-                        {stats.days} {stats.days === 1 ? 'día' : 'días'}
-                      </span>
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold text-white border border-white/20" style={{ background: 'rgba(255,255,255,0.12)' }}>
-                        {stats.activities} actividades
-                      </span>
-                    </>
-                  ) : null}
-                </div>
-
-                {/* Weather description */}
-                {weather?.description && (
-                  <span className="text-xs font-medium text-white/70">
-                    {weather.description}
-                  </span>
-                )}
-              </div>
-            </motion.button>
-          );
-        })}
       </div>
 
       <CityDetailPanel city={selectedCity} onClose={() => setSelectedCity(null)} initialDayDate={initialDayDate} />

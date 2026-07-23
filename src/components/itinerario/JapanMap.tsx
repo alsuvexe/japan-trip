@@ -86,6 +86,7 @@ const ZOOM_STEP = 1.5;
 interface JapanMapProps {
   onCityClick: (city: CityConfig) => void;
   selectedCityId?: string;
+  focusCityId?: string | null;
 }
 
 function PulseMarker({
@@ -283,7 +284,7 @@ function ZoomControls({
   );
 }
 
-export default function JapanMap({ onCityClick, selectedCityId }: JapanMapProps) {
+export default function JapanMap({ onCityClick, selectedCityId, focusCityId }: JapanMapProps) {
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [center, setCenter] = useState<[number, number]>(DEFAULT_CENTER);
 
@@ -298,6 +299,15 @@ export default function JapanMap({ onCityClick, selectedCityId }: JapanMapProps)
     setZoom(DEFAULT_ZOOM);
     setCenter(DEFAULT_CENTER);
   }, []);
+
+  useEffect(() => {
+    if (!focusCityId) return;
+    const city = CITIES.find((c) => c.id === focusCityId);
+    if (city) {
+      setCenter([city.lon, city.lat]);
+      setZoom(8);
+    }
+  }, [focusCityId]);
 
   return (
     <div className="relative w-full select-none">
