@@ -13,7 +13,6 @@ import MarkdownRenderer from '../MarkdownRenderer';
 import { useImagePaste } from '../../hooks/useImagePaste';
 import { exportDayToPdf } from '../../lib/exportDayPdf';
 import type { CityConfig } from './JapanMap';
-import DayBudgetCard from './DayBudgetCard';
 
 interface DayActivity {
   id: string;
@@ -679,8 +678,6 @@ export default function DayFullView({ day, cityStyle, onBack, days, onNavigateDa
               })}
             </div>
           )}
-
-          <DayBudgetCard dayId={day.id} />
 
           <DayMapSection dayId={day.id} initialUrl={day.map_url || ''} city={day.city} />
 
