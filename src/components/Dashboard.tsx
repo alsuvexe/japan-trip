@@ -1,8 +1,29 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, Calendar, ArrowRight, Plane, Archive, Plus } from 'lucide-react';
+import { MapPin, Calendar, ArrowRight, Plane, Archive, Plus, Globe } from 'lucide-react';
 import { useTrips, type Trip } from '../lib/TripContext';
 import NewTripModal from './NewTripModal';
+
+const DESTINATION_GRADIENTS: Record<string, string> = {
+  default: 'linear-gradient(135deg, #1e3a5f 0%, #0e7490 50%, #14b8a6 100%)',
+  japan: 'linear-gradient(135deg, #be185d 0%, #7c2d12 50%, #dc2626 100%)',
+  italy: 'linear-gradient(135deg, #16a34a 0%, #f5f5f4 50%, #dc2626 100%)',
+  france: 'linear-gradient(135deg, #1e40af 0%, #f8fafc 50%, #dc2626 100%)',
+  spain: 'linear-gradient(135deg, #dc2626 0%, #ca8a04 50%, #dc2626 100%)',
+  germany: 'linear-gradient(135deg, #111827 0%, #dc2626 50%, #ca8a04 100%)',
+  austria: 'linear-gradient(135deg, #dc2626 0%, #f8fafc 50%, #dc2626 100%)',
+  portugal: 'linear-gradient(135deg, #15803d 0%, #dc2626 100%)',
+  greece: 'linear-gradient(135deg, #1d4ed8 0%, #60a5fa 50%, #f8fafc 100%)',
+  mexico: 'linear-gradient(135deg, #15803d 0%, #f8fafc 50%, #dc2626 100%)',
+};
+
+function getGradientForDestination(destination: string): string {
+  const key = destination.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  for (const [name, grad] of Object.entries(DESTINATION_GRADIENTS)) {
+    if (key.includes(name)) return grad;
+  }
+  return DESTINATION_GRADIENTS.default;
+}
 
 function formatDateRange(start: string, end: string) {
   const s = new Date(start + 'T00:00:00');
@@ -40,11 +61,15 @@ function statusBadge(status: Trip['status']) {
   }
 }
 
-const COVER_IMAGE = 'https://images.pexels.com/photos/20817306/pexels-photo-20817306.jpeg?auto=compress&cs=tinysrgb&h=650&w=940';
+const JAPAN_COVER = 'https://images.pexels.com/photos/20817306/pexels-photo-20817306.jpeg?auto=compress&cs=tinysrgb&h=650&w=940';
 
 function TripCard({ trip, onClick }: { trip: Trip; onClick: () => void }) {
   const days = dayCount(trip.startDate, trip.endDate);
-  const coverSrc = trip.id === 'japan-2026' ? COVER_IMAGE : trip.coverImage;
+  const [imgError, setImgError] = useState(false);
+
+  const coverSrc = trip.id === 'japan-2026' ? JAPAN_COVER : trip.coverImage;
+  const hasCover = coverSrc && !imgError;
+  const fallbackGradient = getGradientForDestination(trip.destination);
 
   return (
     <motion.button
@@ -61,11 +86,21 @@ function TripCard({ trip, onClick }: { trip: Trip; onClick: () => void }) {
       transition={{ type: 'spring', stiffness: 300, damping: 25 }}
     >
       <div className="relative h-44 sm:h-52 overflow-hidden">
-        <img
-          src={coverSrc}
-          alt={trip.destination}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-        />
+        {hasCover ? (
+          <img
+            src={coverSrc}
+            alt={trip.destination}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <div
+            className="w-full h-full flex items-center justify-center"
+            style={{ background: fallbackGradient }}
+          >
+            <Globe size={48} className="text-white/30" />
+          </div>
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
         <div className="absolute top-3 right-3">
           {statusBadge(trip.status)}
