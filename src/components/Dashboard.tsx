@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, Calendar, ArrowRight, Plane, Archive } from 'lucide-react';
+import { MapPin, Calendar, ArrowRight, Plane, Archive, Plus } from 'lucide-react';
 import { useTrips, type Trip } from '../lib/TripContext';
+import NewTripModal from './NewTripModal';
 
 function formatDateRange(start: string, end: string) {
   const s = new Date(start + 'T00:00:00');
@@ -111,6 +113,7 @@ function TripCard({ trip, onClick }: { trip: Trip; onClick: () => void }) {
 
 export default function Dashboard() {
   const { trips, setActiveTrip } = useTrips();
+  const [modalOpen, setModalOpen] = useState(false);
 
   const upcoming = trips.filter((t) => t.status === 'upcoming' || t.status === 'in_progress');
   const completed = trips.filter((t) => t.status === 'completed');
@@ -131,18 +134,26 @@ export default function Dashboard() {
           transition={{ duration: 0.4 }}
           className="mb-10"
         >
-          <div className="flex items-center gap-3 mb-2">
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #0e7490, #0284c7)' }}
-            >
-              <Plane size={20} className="text-white" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{ background: 'linear-gradient(135deg, #0e7490, #0284c7)' }}
+              >
+                <Plane size={20} className="text-white" />
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black" style={{ color: '#0f172a' }}>
+                Mis Viajes
+              </h1>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black" style={{ color: '#0f172a' }}>
-              Mis Viajes
-            </h1>
+            <button
+              onClick={() => setModalOpen(true)}
+              className="inline-flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl shadow-sm text-sm font-semibold hover:bg-slate-800 transition-colors"
+            >
+              <Plus size={16} /> Nuevo Viaje
+            </button>
           </div>
-          <p className="text-sm font-medium" style={{ color: '#64748b' }}>
+          <p className="text-sm font-medium mt-2" style={{ color: '#64748b' }}>
             Gestiona tus destinos, itinerarios y reservas en un solo lugar.
           </p>
         </motion.div>
@@ -196,6 +207,8 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      <NewTripModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </div>
   );
 }
