@@ -28,9 +28,9 @@ export const TRIPS: Trip[] = [
     id: 'japan-2026',
     title: 'Japan Trip',
     destination: 'Japón',
-    startDate: '2026-12-19',
-    endDate: '2027-01-03',
-    cities: ['Tokyo', 'Osaka', 'Kyoto', 'Hiroshima', 'Hakone'],
+    startDate: '2026-12-04',
+    endDate: '2026-12-14',
+    cities: ['Osaka', 'Kioto', 'Tokio'],
     status: 'upcoming',
     coverImage: '/image.png',
     theme: {
