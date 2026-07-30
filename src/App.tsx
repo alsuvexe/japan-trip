@@ -83,14 +83,15 @@ function JapanTripView() {
 
 function GenericTripDetailView() {
   const { activeTrip, setActiveTrip } = useTrips();
+  const [activeSection, setActiveSection] = useState('resumen');
   const theme = activeTrip?.theme;
 
   return (
     <div className="min-h-screen relative" style={{ backgroundColor: theme?.bgColor || '#e2e8f0' }}>
-      {theme?.bgImage && (
+      {activeTrip?.coverImage && (
         <div
           className="fixed inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: `url('${theme.bgImage}')`, opacity: theme.bgOpacity ?? 0.3 }}
+          style={{ backgroundImage: `url('${activeTrip.coverImage}')`, opacity: 0.15 }}
         />
       )}
       <div
@@ -100,8 +101,8 @@ function GenericTripDetailView() {
 
       <div className="relative flex">
         <Sidebar
-          activeSection="resumen"
-          onSectionChange={() => {}}
+          activeSection={activeSection}
+          onSectionChange={setActiveSection}
           onBackToDashboard={() => setActiveTrip(null)}
           tripTitle={activeTrip?.title}
           tripSubtitle={activeTrip?.destination}
@@ -109,7 +110,7 @@ function GenericTripDetailView() {
         />
         <main className="flex-1 lg:ml-64 min-h-screen">
           <div className="container mx-auto px-4 pt-16 pb-24 lg:pt-10 lg:pb-10 lg:px-8 max-w-4xl">
-            <GenericTripView />
+            <GenericTripView activeSection={activeSection} onSectionChange={setActiveSection} />
           </div>
         </main>
       </div>

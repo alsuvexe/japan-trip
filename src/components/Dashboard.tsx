@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, Calendar, ArrowRight, Plane, Archive, Plus, Globe } from 'lucide-react';
+import { MapPin, Calendar, ArrowRight, Plane, Archive, Plus, Globe, Camera } from 'lucide-react';
 import { useTrips, type Trip } from '../lib/TripContext';
 import NewTripModal from './NewTripModal';
 
@@ -64,12 +64,21 @@ function statusBadge(status: Trip['status']) {
 const JAPAN_COVER = 'https://images.pexels.com/photos/20817306/pexels-photo-20817306.jpeg?auto=compress&cs=tinysrgb&h=650&w=940';
 
 function TripCard({ trip, onClick }: { trip: Trip; onClick: () => void }) {
+  const { updateTrip } = useTrips();
   const days = dayCount(trip.startDate, trip.endDate);
   const [imgError, setImgError] = useState(false);
+  const [editingCover, setEditingCover] = useState(false);
+  const [coverInput, setCoverInput] = useState(trip.coverImage || '');
 
   const coverSrc = trip.id === 'japan-2026' ? JAPAN_COVER : trip.coverImage;
   const hasCover = coverSrc && !imgError;
   const fallbackGradient = getGradientForDestination(trip.destination);
+
+  const handleSaveCover = () => {
+    updateTrip(trip.id, { coverImage: coverInput.trim() });
+    setImgError(false);
+    setEditingCover(false);
+  };
 
   return (
     <motion.button
@@ -102,7 +111,14 @@ function TripCard({ trip, onClick }: { trip: Trip; onClick: () => void }) {
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-        <div className="absolute top-3 right-3">
+        <div className="absolute top-3 right-3 flex items-center gap-2">
+          <button
+            onClick={(e) => { e.stopPropagation(); setEditingCover(true); }}
+            className="w-7 h-7 rounded-lg flex items-center justify-center bg-black/30 hover:bg-black/50 text-white/80 hover:text-white transition-all opacity-0 group-hover:opacity-100"
+            title="Cambiar portada"
+          >
+            <Camera size={14} />
+          </button>
           {statusBadge(trip.status)}
         </div>
         <div className="absolute bottom-4 left-4 right-4">
@@ -142,6 +158,42 @@ function TripCard({ trip, onClick }: { trip: Trip; onClick: () => void }) {
           </span>
         </div>
       </div>
+
+      {editingCover && (
+        <div
+          className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl"
+          style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="bg-white rounded-xl p-4 mx-4 w-full max-w-sm shadow-xl">
+            <p className="text-sm font-bold mb-2" style={{ color: '#1e293b' }}>URL de portada</p>
+            <input
+              type="url"
+              value={coverInput}
+              onChange={(e) => setCoverInput(e.target.value)}
+              placeholder="https://images.unsplash.com/..."
+              className="japan-input mb-3"
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => setEditingCover(false)}
+                className="flex-1 px-3 py-2 rounded-lg text-xs font-semibold"
+                style={{ background: '#f1f5f9', color: '#475569' }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSaveCover}
+                className="flex-1 px-3 py-2 rounded-lg text-xs font-bold text-white"
+                style={{ background: '#0f172a' }}
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.button>
   );
 }

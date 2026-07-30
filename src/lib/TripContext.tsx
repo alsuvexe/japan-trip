@@ -23,6 +23,24 @@ export interface Trip {
   theme: TripTheme;
 }
 
+export interface TripActivity {
+  id: string;
+  tripId: string;
+  date: string;
+  time: string;
+  location: string;
+  note: string;
+}
+
+export interface TripReservation {
+  id: string;
+  tripId: string;
+  hotelName: string;
+  checkIn: string;
+  checkOut: string;
+  notes: string;
+}
+
 const DEFAULT_THEME: TripTheme = {
   accentColor: '#0e7490',
   accentGradient: 'linear-gradient(135deg, #0e7490 0%, #0284c7 100%)',
@@ -56,6 +74,8 @@ const JAPAN_TRIP: Trip = {
 };
 
 const LS_KEY = 'trips_store';
+const LS_ACTIVITIES = 'trip_activities';
+const LS_RESERVATIONS = 'trip_reservations';
 
 function loadTrips(): Trip[] {
   try {
@@ -74,13 +94,42 @@ function persistTrips(trips: Trip[]) {
   localStorage.setItem(LS_KEY, JSON.stringify(trips));
 }
 
+function loadActivities(): TripActivity[] {
+  try {
+    const raw = localStorage.getItem(LS_ACTIVITIES);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function persistActivities(items: TripActivity[]) {
+  localStorage.setItem(LS_ACTIVITIES, JSON.stringify(items));
+}
+
+function loadReservations(): TripReservation[] {
+  try {
+    const raw = localStorage.getItem(LS_RESERVATIONS);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function persistReservations(items: TripReservation[]) {
+  localStorage.setItem(LS_RESERVATIONS, JSON.stringify(items));
+}
+
 export { DEFAULT_THEME };
 
 interface TripContextValue {
   trips: Trip[];
   activeTrip: Trip | null;
   setActiveTrip: (trip: Trip | null) => void;
-  addTrip: (trip: Omit<Trip, 'id' | 'theme' | 'coverImage'>) => void;
+  addTrip: (trip: Omit<Trip, 'id' | 'theme'>) => void;
+  updateTrip: (id: string, data: Partial<Trip>) => void;
+  activities: TripActivity[];
+  addActivity: (activity: Omit<TripActivity, 'id'>) => void;
+  deleteActivity: (id: string) => void;
+  reservations: TripReservation[];
+  addReservation: (reservation: Omit<TripReservation, 'id'>) => void;
+  deleteReservation: (id: string) => void;
 }
 
 const TripContext = createContext<TripContextValue>({
@@ -88,17 +137,25 @@ const TripContext = createContext<TripContextValue>({
   activeTrip: null,
   setActiveTrip: () => {},
   addTrip: () => {},
+  updateTrip: () => {},
+  activities: [],
+  addActivity: () => {},
+  deleteActivity: () => {},
+  reservations: [],
+  addReservation: () => {},
+  deleteReservation: () => {},
 });
 
 export function TripProvider({ children }: { children: ReactNode }) {
   const [trips, setTrips] = useState<Trip[]>(loadTrips);
   const [activeTrip, setActiveTrip] = useState<Trip | null>(null);
+  const [activities, setActivities] = useState<TripActivity[]>(loadActivities);
+  const [reservations, setReservations] = useState<TripReservation[]>(loadReservations);
 
-  const addTrip = useCallback((data: Omit<Trip, 'id' | 'theme' | 'coverImage'>) => {
+  const addTrip = useCallback((data: Omit<Trip, 'id' | 'theme'>) => {
     const newTrip: Trip = {
       ...data,
       id: `trip-${Date.now()}`,
-      coverImage: '',
       theme: DEFAULT_THEME,
     };
     setTrips((prev) => {
@@ -108,8 +165,51 @@ export function TripProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const updateTrip = useCallback((id: string, data: Partial<Trip>) => {
+    setTrips((prev) => {
+      const updated = prev.map((t) => (t.id === id ? { ...t, ...data } : t));
+      persistTrips(updated);
+      return updated;
+    });
+    setActiveTrip((prev) => (prev && prev.id === id ? { ...prev, ...data } : prev));
+  }, []);
+
+  const addActivity = useCallback((activity: Omit<TripActivity, 'id'>) => {
+    const item: TripActivity = { ...activity, id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` };
+    setActivities((prev) => {
+      const updated = [...prev, item];
+      persistActivities(updated);
+      return updated;
+    });
+  }, []);
+
+  const deleteActivity = useCallback((id: string) => {
+    setActivities((prev) => {
+      const updated = prev.filter((a) => a.id !== id);
+      persistActivities(updated);
+      return updated;
+    });
+  }, []);
+
+  const addReservation = useCallback((reservation: Omit<TripReservation, 'id'>) => {
+    const item: TripReservation = { ...reservation, id: `res-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` };
+    setReservations((prev) => {
+      const updated = [...prev, item];
+      persistReservations(updated);
+      return updated;
+    });
+  }, []);
+
+  const deleteReservation = useCallback((id: string) => {
+    setReservations((prev) => {
+      const updated = prev.filter((r) => r.id !== id);
+      persistReservations(updated);
+      return updated;
+    });
+  }, []);
+
   return (
-    <TripContext.Provider value={{ trips, activeTrip, setActiveTrip, addTrip }}>
+    <TripContext.Provider value={{ trips, activeTrip, setActiveTrip, addTrip, updateTrip, activities, addActivity, deleteActivity, reservations, addReservation, deleteReservation }}>
       {children}
     </TripContext.Provider>
   );

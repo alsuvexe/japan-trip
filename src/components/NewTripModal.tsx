@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, MapPin } from 'lucide-react';
+import { X, Plus, MapPin, ImageIcon } from 'lucide-react';
 import { useTrips, type Trip } from '../lib/TripContext';
 
 interface NewTripModalProps {
@@ -17,6 +17,7 @@ export default function NewTripModal({ open, onClose }: NewTripModalProps) {
   const [endDate, setEndDate] = useState('');
   const [cities, setCities] = useState<string[]>([]);
   const [cityInput, setCityInput] = useState('');
+  const [coverImage, setCoverImage] = useState('');
   const [status, setStatus] = useState<Trip['status']>('upcoming');
 
   const reset = () => {
@@ -26,6 +27,7 @@ export default function NewTripModal({ open, onClose }: NewTripModalProps) {
     setEndDate('');
     setCities([]);
     setCityInput('');
+    setCoverImage('');
     setStatus('upcoming');
   };
 
@@ -58,6 +60,7 @@ export default function NewTripModal({ open, onClose }: NewTripModalProps) {
       startDate,
       endDate,
       cities,
+      coverImage: coverImage.trim(),
       status,
     });
 
@@ -85,7 +88,7 @@ export default function NewTripModal({ open, onClose }: NewTripModalProps) {
             exit={{ opacity: 0 }}
           >
             <motion.div
-              className="w-full max-w-lg rounded-2xl overflow-hidden"
+              className="w-full max-w-lg rounded-2xl overflow-hidden max-h-[90vh] overflow-y-auto"
               style={{
                 background: 'rgba(255,255,255,0.96)',
                 backdropFilter: 'blur(24px)',
@@ -209,6 +212,25 @@ export default function NewTripModal({ open, onClose }: NewTripModalProps) {
                       ))}
                     </div>
                   )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold mb-1.5" style={{ color: '#475569' }}>
+                    <span className="inline-flex items-center gap-1.5">
+                      <ImageIcon size={12} />
+                      URL de Imagen de Portada (Opcional)
+                    </span>
+                  </label>
+                  <input
+                    type="url"
+                    value={coverImage}
+                    onChange={(e) => setCoverImage(e.target.value)}
+                    placeholder="https://images.unsplash.com/..."
+                    className="japan-input"
+                  />
+                  <p className="text-[11px] mt-1" style={{ color: '#94a3b8' }}>
+                    Si lo dejas vacío se usará un fondo automático basado en el destino.
+                  </p>
                 </div>
 
                 <div>
