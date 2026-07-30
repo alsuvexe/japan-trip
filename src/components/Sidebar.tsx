@@ -3,11 +3,17 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   LayoutDashboard, MapPin, Hotel, UtensilsCrossed,
   Calendar, ClipboardList, Globe, Lightbulb, MoreHorizontal,
+  ChevronLeft,
 } from 'lucide-react';
+import type { TripTheme } from '../lib/TripContext';
 
 interface SidebarProps {
   activeSection: string;
   onSectionChange: (section: string) => void;
+  onBackToDashboard: () => void;
+  tripTitle?: string;
+  tripSubtitle?: string;
+  theme?: TripTheme | null;
 }
 
 const menuItems = [
@@ -35,8 +41,12 @@ const bottomSheetItems = [
   { id: 'otros-viajes', label: 'Otros Viajes',  icon: Globe },
 ];
 
-export default function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
+export default function Sidebar({ activeSection, onSectionChange, onBackToDashboard, tripTitle, tripSubtitle, theme }: SidebarProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
+
+  const accent = theme?.sidebarActive || '#c94060';
+  const accentBg = theme?.sidebarActiveBg || 'rgba(190,24,93,0.07)';
+  const gradient = theme?.accentGradient || 'linear-gradient(135deg, #0e7490 0%, #be185d 100%)';
 
   const navigate = (id: string) => {
     onSectionChange(id);
@@ -47,7 +57,7 @@ export default function Sidebar({ activeSection, onSectionChange }: SidebarProps
 
   return (
     <>
-      {/* ── DESKTOP SIDEBAR ── */}
+      {/* DESKTOP SIDEBAR */}
       <aside
         className="hidden lg:flex fixed top-0 left-0 h-full w-64 flex-col seigaiha-pattern"
         style={{
@@ -59,26 +69,35 @@ export default function Sidebar({ activeSection, onSectionChange }: SidebarProps
         }}
       >
         <div className="p-5 border-b" style={{ borderColor: 'rgba(0,0,0,0.06)' }}>
+          <button
+            onClick={onBackToDashboard}
+            className="flex items-center gap-2 text-xs font-semibold mb-3 px-2 py-1.5 rounded-lg hover:bg-slate-100 transition-all w-full"
+            style={{ color: '#64748b' }}
+          >
+            <ChevronLeft size={14} /> Mis Viajes
+          </button>
           <div className="flex items-center gap-3">
             <div
               className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-              style={{ background: 'linear-gradient(135deg, #0e7490 0%, #be185d 100%)' }}
+              style={{ background: gradient }}
             >
-              <span className="text-white font-black text-sm" style={{ fontFamily: 'Noto Sans JP, sans-serif' }}>JP</span>
+              <span className="text-white font-black text-sm" style={{ fontFamily: 'Noto Sans JP, sans-serif' }}>
+                {tripTitle?.substring(0, 2).toUpperCase() || 'TR'}
+              </span>
             </div>
             <div>
               <h1
                 className="text-base font-bold leading-tight"
                 style={{
-                  background: 'linear-gradient(90deg, #0e7490 0%, #be185d 100%)',
+                  background: gradient,
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                   backgroundClip: 'text',
                 }}
               >
-                Japan Trip
+                {tripTitle || 'Viaje'}
               </h1>
-              <p className="text-xs" style={{ color: '#a0aec0' }}>Diciembre 2026</p>
+              <p className="text-xs" style={{ color: '#a0aec0' }}>{tripSubtitle || ''}</p>
             </div>
           </div>
         </div>
@@ -94,7 +113,7 @@ export default function Sidebar({ activeSection, onSectionChange }: SidebarProps
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all min-h-[44px]"
                 style={
                   isActive
-                    ? { background: 'rgba(190,24,93,0.07)', border: '1px solid rgba(190,24,93,0.18)', color: '#c94060' }
+                    ? { background: accentBg, border: `1px solid ${accent}30`, color: accent }
                     : { background: 'transparent', border: '1px solid transparent', color: '#718096' }
                 }
                 onMouseEnter={(e) => {
@@ -110,12 +129,12 @@ export default function Sidebar({ activeSection, onSectionChange }: SidebarProps
                   }
                 }}
               >
-                <Icon size={18} style={{ color: isActive ? '#c94060' : undefined, strokeWidth: 1.75 }} />
+                <Icon size={18} style={{ color: isActive ? accent : undefined, strokeWidth: 1.75 }} />
                 <span className="text-sm font-medium">{item.label}</span>
                 {isActive && (
                   <div
                     className="ml-auto w-1.5 h-1.5 rounded-full"
-                    style={{ background: '#c94060', boxShadow: '0 0 6px rgba(190,24,93,0.4)' }}
+                    style={{ background: accent, boxShadow: `0 0 6px ${accent}66` }}
                   />
                 )}
               </button>
@@ -127,7 +146,7 @@ export default function Sidebar({ activeSection, onSectionChange }: SidebarProps
           <div
             className="p-3 rounded-xl border"
             style={{
-              background: 'linear-gradient(135deg, rgba(14,116,144,0.06) 0%, rgba(190,24,93,0.06) 100%)',
+              background: `linear-gradient(135deg, rgba(14,116,144,0.06) 0%, ${accent}10 100%)`,
               borderColor: 'rgba(0,0,0,0.07)',
             }}
           >
@@ -135,19 +154,42 @@ export default function Sidebar({ activeSection, onSectionChange }: SidebarProps
             <p
               className="text-xs font-bold"
               style={{
-                background: 'linear-gradient(90deg, #0e7490 0%, #be185d 100%)',
+                background: gradient,
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text',
               }}
             >
-              Japón · Dic 2026
+              {tripTitle || 'Viaje'} · {tripSubtitle || ''}
             </p>
           </div>
         </div>
       </aside>
 
-      {/* ── MOBILE BOTTOM NAV ── */}
+      {/* MOBILE TOP BAR (back button) */}
+      <div
+        className="lg:hidden fixed top-0 left-0 right-0 z-50"
+        style={{
+          background: 'rgba(255,255,255,0.88)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          borderBottom: '1px solid rgba(255,255,255,0.5)',
+          boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+        }}
+      >
+        <div className="flex items-center h-12 px-3">
+          <button
+            onClick={onBackToDashboard}
+            className="flex items-center gap-1.5 text-xs font-bold px-2 py-1.5 rounded-lg hover:bg-slate-100 transition-all"
+            style={{ color: '#475569' }}
+          >
+            <ChevronLeft size={16} /> Mis Viajes
+          </button>
+          <span className="ml-auto text-xs font-bold" style={{ color: accent }}>{tripTitle}</span>
+        </div>
+      </div>
+
+      {/* MOBILE BOTTOM NAV */}
       <nav
         className="lg:hidden fixed bottom-0 left-0 right-0 z-50"
         style={{
@@ -168,42 +210,41 @@ export default function Sidebar({ activeSection, onSectionChange }: SidebarProps
                 key={item.id}
                 onClick={() => navigate(item.id)}
                 className="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 min-h-[56px] transition-all duration-150 relative"
-                style={{ color: isActive ? '#be185d' : '#94a3b8' }}
+                style={{ color: isActive ? accent : '#94a3b8' }}
               >
                 {isActive && (
                   <span
                     className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
-                    style={{ background: 'linear-gradient(90deg,#0e7490,#be185d)' }}
+                    style={{ background: gradient }}
                   />
                 )}
-                <Icon size={22} strokeWidth={isActive ? 2.25 : 1.75} style={{ color: isActive ? '#be185d' : '#94a3b8' }} />
-                <span className="text-[10px] font-semibold leading-none" style={{ color: isActive ? '#be185d' : '#94a3b8' }}>
+                <Icon size={22} strokeWidth={isActive ? 2.25 : 1.75} style={{ color: isActive ? accent : '#94a3b8' }} />
+                <span className="text-[10px] font-semibold leading-none" style={{ color: isActive ? accent : '#94a3b8' }}>
                   {item.label}
                 </span>
               </button>
             );
           })}
 
-          {/* "Más" button */}
           <button
             onClick={() => setSheetOpen(true)}
             className="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 min-h-[56px] transition-all duration-150 relative"
-            style={{ color: isMoreActive || sheetOpen ? '#be185d' : '#94a3b8' }}
+            style={{ color: isMoreActive || sheetOpen ? accent : '#94a3b8' }}
           >
             {isMoreActive && !sheetOpen && (
               <span
                 className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
-                style={{ background: 'linear-gradient(90deg,#0e7490,#be185d)' }}
+                style={{ background: gradient }}
               />
             )}
             <MoreHorizontal
               size={22}
               strokeWidth={isMoreActive || sheetOpen ? 2.25 : 1.75}
-              style={{ color: isMoreActive || sheetOpen ? '#be185d' : '#94a3b8' }}
+              style={{ color: isMoreActive || sheetOpen ? accent : '#94a3b8' }}
             />
             <span
               className="text-[10px] font-semibold leading-none"
-              style={{ color: isMoreActive || sheetOpen ? '#be185d' : '#94a3b8' }}
+              style={{ color: isMoreActive || sheetOpen ? accent : '#94a3b8' }}
             >
               Más
             </span>
@@ -211,11 +252,10 @@ export default function Sidebar({ activeSection, onSectionChange }: SidebarProps
         </div>
       </nav>
 
-      {/* ── BOTTOM SHEET ── */}
+      {/* BOTTOM SHEET */}
       <AnimatePresence>
         {sheetOpen && (
           <>
-            {/* Backdrop */}
             <motion.div
               key="backdrop"
               className="lg:hidden fixed inset-0 z-[60]"
@@ -227,7 +267,6 @@ export default function Sidebar({ activeSection, onSectionChange }: SidebarProps
               onClick={() => setSheetOpen(false)}
             />
 
-            {/* Sheet panel */}
             <motion.div
               key="sheet"
               className="lg:hidden fixed left-0 right-0 z-[61] rounded-t-3xl"
@@ -245,17 +284,14 @@ export default function Sidebar({ activeSection, onSectionChange }: SidebarProps
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 320 }}
             >
-              {/* Drag handle */}
               <div className="flex justify-center pt-3 pb-1">
                 <div className="w-10 h-1 rounded-full" style={{ background: 'rgba(0,0,0,0.15)' }} />
               </div>
 
-              {/* Section title */}
               <p className="text-[11px] font-bold uppercase tracking-widest px-6 pt-3 pb-1" style={{ color: '#94a3b8' }}>
                 Más secciones
               </p>
 
-              {/* Menu items */}
               <div className="px-3">
                 {bottomSheetItems.map((item, idx) => {
                   const Icon = item.icon;
@@ -268,8 +304,8 @@ export default function Sidebar({ activeSection, onSectionChange }: SidebarProps
                       style={{
                         paddingTop: 14,
                         paddingBottom: 14,
-                        color: isActive ? '#be185d' : '#1e293b',
-                        background: isActive ? 'rgba(190,24,93,0.06)' : 'transparent',
+                        color: isActive ? accent : '#1e293b',
+                        background: isActive ? accentBg : 'transparent',
                         borderBottom: idx < bottomSheetItems.length - 1 ? '1px solid rgba(0,0,0,0.05)' : 'none',
                       }}
                       whileTap={{ scale: 0.97 }}
@@ -277,18 +313,16 @@ export default function Sidebar({ activeSection, onSectionChange }: SidebarProps
                       <div
                         className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                         style={{
-                          background: isActive
-                            ? 'rgba(190,24,93,0.10)'
-                            : 'rgba(0,0,0,0.05)',
+                          background: isActive ? `${accent}1a` : 'rgba(0,0,0,0.05)',
                         }}
                       >
-                        <Icon size={20} strokeWidth={1.75} style={{ color: isActive ? '#be185d' : '#475569' }} />
+                        <Icon size={20} strokeWidth={1.75} style={{ color: isActive ? accent : '#475569' }} />
                       </div>
                       <span className="text-base font-semibold">{item.label}</span>
                       {isActive && (
                         <div
                           className="ml-auto w-2 h-2 rounded-full"
-                          style={{ background: '#be185d', boxShadow: '0 0 6px rgba(190,24,93,0.5)' }}
+                          style={{ background: accent, boxShadow: `0 0 6px ${accent}80` }}
                         />
                       )}
                     </motion.button>

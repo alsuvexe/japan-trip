@@ -8,10 +8,13 @@ import CalendarioReservas from './components/sections/CalendarioReservas';
 import TodoList from './components/sections/TodoList';
 import OtrosViajes from './components/sections/OtrosViajes';
 import SugerenciasFamiliares from './components/sections/SugerenciasFamiliares';
+import Dashboard from './components/Dashboard';
 import { TodoProvider } from './lib/TodoContext';
 import { AdminProvider } from './lib/AdminContext';
+import { TripProvider, useTrips } from './lib/TripContext';
 
-function App() {
+function TripView() {
+  const { activeTrip, setActiveTrip } = useTrips();
   const [activeSection, setActiveSection] = useState('resumen');
   const [initialCity, setInitialCity] = useState<string | undefined>(undefined);
   const [initialDayDate, setInitialDayDate] = useState<string | undefined>(undefined);
@@ -45,32 +48,56 @@ function App() {
     }
   };
 
+  const theme = activeTrip?.theme;
+
+  return (
+    <div className="min-h-screen relative" style={{ backgroundColor: theme?.bgColor || '#8ab4cc' }}>
+      <div
+        className="fixed inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: `url('${theme?.bgImage || '/image.png'}')`, opacity: theme?.bgOpacity ?? 0.9 }}
+      />
+      <div
+        className="fixed inset-0 pointer-events-none"
+        style={{ background: 'linear-gradient(to bottom, rgba(10,30,60,0.08) 0%, transparent 40%, rgba(10,30,60,0.12) 100%)' }}
+      />
+
+      <div className="relative flex">
+        <Sidebar
+          activeSection={activeSection}
+          onSectionChange={setActiveSection}
+          onBackToDashboard={() => setActiveTrip(null)}
+          tripTitle={activeTrip?.title}
+          tripSubtitle={activeTrip?.destination}
+          theme={theme}
+        />
+        <main className="flex-1 lg:ml-64 min-h-screen">
+          <div className="container mx-auto px-4 pt-16 pb-24 lg:pt-10 lg:pb-10 lg:px-8 max-w-4xl">
+            {renderSection()}
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+function AppRouter() {
+  const { activeTrip } = useTrips();
+
+  if (!activeTrip) {
+    return <Dashboard />;
+  }
+
+  return <TripView />;
+}
+
+function App() {
   return (
     <AdminProvider>
-      <TodoProvider>
-      <div className="min-h-screen relative" style={{ backgroundColor: '#8ab4cc' }}>
-        <div
-          className="fixed inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: `url('/image.png')`, opacity: 0.90 }}
-        />
-        <div
-          className="fixed inset-0 pointer-events-none"
-          style={{ background: 'linear-gradient(to bottom, rgba(10,30,60,0.08) 0%, transparent 40%, rgba(10,30,60,0.12) 100%)' }}
-        />
-
-        <div className="relative flex">
-          <Sidebar
-            activeSection={activeSection}
-            onSectionChange={setActiveSection}
-          />
-          <main className="flex-1 lg:ml-64 min-h-screen">
-            <div className="container mx-auto px-4 py-6 pb-24 lg:pb-10 lg:px-8 lg:py-10 max-w-4xl">
-              {renderSection()}
-            </div>
-          </main>
-        </div>
-      </div>
-      </TodoProvider>
+      <TripProvider>
+        <TodoProvider>
+          <AppRouter />
+        </TodoProvider>
+      </TripProvider>
     </AdminProvider>
   );
 }
