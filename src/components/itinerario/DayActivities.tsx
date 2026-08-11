@@ -281,7 +281,7 @@ export default function DayActivities({ dayId }: { dayId: string }) {
         footer={
           <div className="flex justify-end gap-2">
             <button onClick={() => { setIsAddOpen(false); setAttachFile(null); }} className="japan-btn border border-slate-300 hover:bg-slate-100 gap-2"><X size={15} /><span>Cancelar</span></button>
-            <button onClick={addActivity} disabled={!form.title.trim() || uploading} className="japan-btn-primary gap-2 disabled:opacity-40">{uploading ? 'Subiendo...' : 'Añadir'}</button>
+            <button onClick={addActivity} disabled={(form.category === 'restaurant' ? !form.restaurant_name.trim() : !form.title.trim()) || uploading} className="japan-btn-primary gap-2 disabled:opacity-40">{uploading ? 'Subiendo...' : 'Añadir'}</button>
           </div>
         }
       >
@@ -299,21 +299,18 @@ export default function DayActivities({ dayId }: { dayId: string }) {
               })}
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="col-span-1">
-              <label className="text-xs text-slate-600 font-semibold mb-1 block">Hora</label>
-              <input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} className="japan-input" />
-            </div>
-            <div className="col-span-2">
-              <label className="text-xs text-slate-600 font-semibold mb-1 block">Título</label>
-              <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Ej: Fushimi Inari" className="japan-input" onKeyDown={(e) => e.key === 'Enter' && addActivity()} />
-            </div>
-          </div>
-          {form.category === 'restaurant' && (
-            <div className="space-y-3 p-3 rounded-xl border border-orange-200 bg-orange-50/50">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-orange-600">Datos del restaurante</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
+          {form.category === 'restaurant' ? (
+            <div className="space-y-3 p-4 rounded-xl border border-orange-200 bg-orange-50/40">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-orange-600 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                Datos del restaurante
+              </p>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-1">
+                  <label className="text-xs text-slate-600 font-semibold mb-1 block">Hora</label>
+                  <input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} className="japan-input" />
+                </div>
+                <div className="col-span-2">
                   <label className="text-xs text-slate-600 font-semibold mb-1 block">Servicio</label>
                   <select value={form.restaurant_service} onChange={(e) => setForm({ ...form, restaurant_service: e.target.value })} className="japan-input">
                     <option value="">— Selecciona —</option>
@@ -324,28 +321,45 @@ export default function DayActivities({ dayId }: { dayId: string }) {
                     <option value="Snack/Street Food">Snack/Street Food</option>
                   </select>
                 </div>
-                <div>
-                  <label className="text-xs text-slate-600 font-semibold mb-1 block">Restaurante</label>
-                  <input value={form.restaurant_name} onChange={(e) => setForm({ ...form, restaurant_name: e.target.value })} placeholder="Nombre del lugar" className="japan-input" />
-                </div>
+              </div>
+              <div>
+                <label className="text-xs text-slate-600 font-semibold mb-1 block">Nombre del Restaurante</label>
+                <input value={form.restaurant_name} onChange={(e) => setForm({ ...form, restaurant_name: e.target.value, title: e.target.value })} placeholder="Ej: Ichiran, Acchichi Honpo" className="japan-input" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-slate-600 font-semibold mb-1 block">Tipo de comida</label>
-                  <input value={form.restaurant_food_type} onChange={(e) => setForm({ ...form, restaurant_food_type: e.target.value })} placeholder="Ej: Ramen tonkotsu" className="japan-input" />
+                  <label className="text-xs text-slate-600 font-semibold mb-1 block">Tipo de Comida</label>
+                  <input value={form.restaurant_food_type} onChange={(e) => setForm({ ...form, restaurant_food_type: e.target.value })} placeholder="Ej: Ramen Tonkotsu, Yakiniku" className="japan-input" />
                 </div>
                 <div>
-                  <label className="text-xs text-slate-600 font-semibold mb-1 block">Precio medio</label>
+                  <label className="text-xs text-slate-600 font-semibold mb-1 block">Precio Medio</label>
                   <input value={form.restaurant_avg_price} onChange={(e) => setForm({ ...form, restaurant_avg_price: e.target.value })} placeholder="Ej: 2.000 - 3.500 ¥" className="japan-input" />
                 </div>
               </div>
               <div>
-                <label className="text-xs text-slate-600 font-semibold mb-1 block">Notas del restaurante</label>
-                <textarea value={form.restaurant_notes} onChange={(e) => setForm({ ...form, restaurant_notes: e.target.value })} rows={2} placeholder="Platos recomendados, detalles de reserva..." className="japan-input resize-none" />
+                <label className="text-xs text-slate-600 font-semibold mb-1 block">Dirección / Ubicación</label>
+                <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Ej: Dotonbori, Osaka" className="japan-input" />
+              </div>
+              <div>
+                <label className="text-xs text-slate-600 font-semibold mb-1 block">Descripción / Notas</label>
+                <textarea value={form.restaurant_notes} onChange={(e) => setForm({ ...form, restaurant_notes: e.target.value })} rows={3} placeholder="Platos recomendados, detalles de reserva, notas..." className="japan-input resize-none" />
               </div>
             </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-1">
+                  <label className="text-xs text-slate-600 font-semibold mb-1 block">Hora</label>
+                  <input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} className="japan-input" />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs text-slate-600 font-semibold mb-1 block">Título</label>
+                  <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Ej: Fushimi Inari" className="japan-input" onKeyDown={(e) => e.key === 'Enter' && addActivity()} />
+                </div>
+              </div>
+              <DescriptionTextarea value={form.description} onChange={(val) => setForm({ ...form, description: val })} rows={6} placeholder="Detalles, notas, reservas..." />
+            </>
           )}
-          <DescriptionTextarea value={form.description} onChange={(val) => setForm({ ...form, description: val })} rows={6} placeholder="Detalles, notas, reservas..." />
           <button
             type="button"
             onClick={() => setForm({ ...form, has_pending_tasks: !form.has_pending_tasks })}
