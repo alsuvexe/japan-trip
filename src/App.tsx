@@ -37,7 +37,7 @@ function JapanTripView() {
       case 'hoteles':
         return <Hoteles />;
       case 'restaurantes':
-        return <Restaurantes />;
+        return <Restaurantes onSectionChange={handleSectionChange} />;
       case 'todos':
         return <TodoList />;
       case 'otros-viajes':

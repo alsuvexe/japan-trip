@@ -1,31 +1,30 @@
 import { useEffect, useState } from 'react';
-import { UtensilsCrossed, MapPin, Calendar, Star, Plus, Pencil, Trash2, Save, X, Clock, Banknote, CalendarCheck } from 'lucide-react';
+import { UtensilsCrossed, MapPin, X, ExternalLink, ChevronRight } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import Modal from '../Modal';
 
-interface Restaurant {
+interface RestaurantActivity {
   id: string;
-  name: string;
-  city: string;
-  cuisine_type: string;
-  address: string;
-  reservation_date: string | null;
-  reservation_time: string;
-  notes: string;
-  priority: string;
-  avg_price_per_person: number;
-  in_itinerary: boolean;
+  day_id: string;
+  title: string;
+  time: string;
+  category: string;
+  restaurant_service: string;
+  restaurant_name: string;
+  restaurant_food_type: string;
+  restaurant_avg_price: string;
+  restaurant_notes: string;
+  description: string;
+  day_date: string;
+  day_city: string;
+  day_number: number;
 }
 
-const CITIES = ['Osaka', 'Kioto', 'Tokio'];
-const PRIORITIES = ['high', 'normal', 'low'];
-const PRIORITY_LABELS: Record<string, string> = { high: 'Imprescindible', normal: 'Recomendado', low: 'Opcional' };
-
-const CITY_STYLES: Record<string, { border: string; bg: string; text: string; dot: string; color: string }> = {
-  Osaka: { border: 'border-cyan-500/35',   bg: 'bg-cyan-500/15',   text: 'text-cyan-700',   dot: 'bg-cyan-500',   color: '#0e7490' },
-  Kioto: { border: 'border-pink-500/35',   bg: 'bg-pink-500/15',   text: 'text-pink-700',   dot: 'bg-pink-500',   color: '#be185d' },
-  Tokio: { border: 'border-indigo-500/35', bg: 'bg-indigo-500/15', text: 'text-indigo-700', dot: 'bg-indigo-500', color: '#6366f1' },
-};
+interface ItineraryDay {
+  id: string;
+  date: string;
+  city: string;
+}
 
 const GLASS_CARD: React.CSSProperties = {
   background: 'rgba(255,255,255,0.75)',
@@ -35,368 +34,328 @@ const GLASS_CARD: React.CSSProperties = {
   boxShadow: '0 4px 20px rgba(0,0,0,0.10)',
 };
 
-const EMPTY_R: Omit<Restaurant, 'id'> = {
-  name: '', city: 'Osaka', cuisine_type: '', address: '',
-  reservation_date: null, reservation_time: '',
-  notes: '', priority: 'normal', avg_price_per_person: 0, in_itinerary: false,
+const SERVICE_STYLES: Record<string, { bg: string; text: string; border: string }> = {
+  Desayuno: { bg: 'bg-amber-100', text: 'text-amber-800', border: 'border-amber-200' },
+  Almuerzo: { bg: 'bg-orange-100', text: 'text-orange-800', border: 'border-orange-200' },
+  Cena: { bg: 'bg-rose-100', text: 'text-rose-800', border: 'border-rose-200' },
+  'Cena opcional': { bg: 'bg-pink-100', text: 'text-pink-800', border: 'border-pink-200' },
+  'Snack/Street Food': { bg: 'bg-emerald-100', text: 'text-emerald-800', border: 'border-emerald-200' },
 };
 
-async function syncRestaurantToCalendar(restaurant: Restaurant) {
-  await supabase.from('calendar_events').delete().eq('source', 'restaurant').eq('source_id', restaurant.id);
-  if (restaurant.reservation_date && restaurant.reservation_time && restaurant.in_itinerary) {
-    const timeLabel = restaurant.reservation_time ? ` ${restaurant.reservation_time}` : '';
-    await supabase.from('calendar_events').insert({
-      title: `${restaurant.name}${timeLabel}`,
-      event_date: restaurant.reservation_date,
-      category: 'restaurant',
-      source: 'restaurant',
-      source_id: restaurant.id,
-      assignee: '',
-    });
+const CITY_COLORS: Record<string, string> = {
+  Osaka: '#0e7490',
+  Kioto: '#be185d',
+  Tokio: '#0369a1',
+};
+
+function ServiceBadge({ service }: { service: string }) {
+  const style = SERVICE_STYLES[service] || { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-200' };
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${style.bg} ${style.text} ${style.border}`}>
+      {service || 'Comida'}
+    </span>
+  );
+}
+
+interface RestaurantesSectionProps {
+  onSectionChange?: (section: string, city?: string, dayDate?: string) => void;
+}
+
+export default function Restaurantes({ onSectionChange }: RestaurantesSectionProps) {
+  const [items, setItems] = useState<RestaurantActivity[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedItem, setSelectedItem] = useState<RestaurantActivity | null>(null);
+
+  useEffect(() => {
+    loadRestaurantActivities();
+
+    const channel = supabase
+      .channel('restaurantes-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'day_activities' }, () => {
+        loadRestaurantActivities();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'itinerary_days' }, () => {
+        loadRestaurantActivities();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  async function loadRestaurantActivities() {
+    const { data: days } = await supabase
+      .from('itinerary_days')
+      .select('id, date, city')
+      .order('date', { ascending: true });
+
+    if (!days || days.length === 0) { setItems([]); setLoading(false); return; }
+
+    const { data: activities } = await supabase
+      .from('day_activities')
+      .select('*')
+      .eq('category', 'restaurant')
+      .order('time', { ascending: true });
+
+    if (!activities) { setItems([]); setLoading(false); return; }
+
+    const dayMap = new Map<string, ItineraryDay>(days.map((d) => [d.id, d]));
+    const startDate = days[0].date;
+
+    const result: RestaurantActivity[] = activities
+      .map((act) => {
+        const day = dayMap.get(act.day_id);
+        if (!day) return null;
+        const dayNumber = Math.round(
+          (new Date(day.date + 'T00:00:00').getTime() - new Date(startDate + 'T00:00:00').getTime()) /
+            (1000 * 60 * 60 * 24),
+        ) + 1;
+        return {
+          id: act.id,
+          day_id: act.day_id,
+          title: act.title,
+          time: act.time || '',
+          category: act.category,
+          restaurant_service: act.restaurant_service || '',
+          restaurant_name: act.restaurant_name || '',
+          restaurant_food_type: act.restaurant_food_type || '',
+          restaurant_avg_price: act.restaurant_avg_price || '',
+          restaurant_notes: act.restaurant_notes || '',
+          description: act.description || '',
+          day_date: day.date,
+          day_city: day.city,
+          day_number: dayNumber,
+        };
+      })
+      .filter(Boolean) as RestaurantActivity[];
+
+    setItems(result.sort((a, b) => a.day_number - b.day_number || a.time.localeCompare(b.time)));
+    setLoading(false);
   }
-}
 
-function ExpandableNotes({ notes }: { notes: string }) {
-  const [expanded, setExpanded] = useState(false);
-  const isLong = notes.length > 120;
-  if (!notes) return null;
-  return (
-    <div className="mt-2">
-      <p className={`text-xs leading-relaxed transition-all duration-300 ${!expanded && isLong ? 'line-clamp-3' : ''}`} style={{ color: '#334155' }}>
-        {notes}
-      </p>
-      {isLong && (
-        <button onClick={() => setExpanded((v) => !v)} className="text-[11px] font-semibold mt-1 transition-colors" style={{ color: '#0e7490' }}>
-          {expanded ? 'Mostrar menos' : 'Leer más...'}
-        </button>
-      )}
-    </div>
-  );
-}
-
-function RestaurantForm({ form, setForm, onSave, onCancel, title }: {
-  form: Partial<Restaurant>;
-  setForm: React.Dispatch<React.SetStateAction<Partial<Restaurant>>>;
-  onSave: () => void;
-  onCancel: () => void;
-  title: string;
-}) {
-  const hasCalendarSync = !!(form.reservation_date && form.reservation_time && form.in_itinerary);
-  const labelStyle = { color: '#475569' };
-
-  return (
-    <div className="space-y-4">
-      <div>
-        <label className="text-[10px] font-bold uppercase tracking-wider mb-1.5 block" style={labelStyle}>Nombre</label>
-        <input value={form.name || ''} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ej: Ichiran Ramen" className="japan-input w-full" />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-[10px] font-bold uppercase tracking-wider mb-1.5 block" style={labelStyle}>Ciudad</label>
-          <select value={form.city || 'Osaka'} onChange={(e) => setForm({ ...form, city: e.target.value })} className="japan-input w-full">
-            {CITIES.map((c) => <option key={c}>{c}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="text-[10px] font-bold uppercase tracking-wider mb-1.5 block" style={labelStyle}>Prioridad</label>
-          <select value={form.priority || 'normal'} onChange={(e) => setForm({ ...form, priority: e.target.value })} className="japan-input w-full">
-            {PRIORITIES.map((p) => <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>)}
-          </select>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-[10px] font-bold uppercase tracking-wider mb-1.5 block" style={labelStyle}>Tipo de cocina</label>
-          <input value={form.cuisine_type || ''} onChange={(e) => setForm({ ...form, cuisine_type: e.target.value })} placeholder="Ej: Ramen, Sushi..." className="japan-input w-full" />
-        </div>
-        <div>
-          <label className="text-[10px] font-bold uppercase tracking-wider mb-1.5 block" style={labelStyle}><span className="flex items-center gap-1"><Banknote size={10} /> Precio/persona (¥)</span></label>
-          <input type="number" min="0" step="100" value={form.avg_price_per_person || ''} onChange={(e) => setForm({ ...form, avg_price_per_person: Number(e.target.value) || 0 })} placeholder="Ej: 2000" className="japan-input w-full" />
-        </div>
-      </div>
-      <div>
-        <label className="text-[10px] font-bold uppercase tracking-wider mb-1.5 block" style={labelStyle}>Dirección</label>
-        <input value={form.address || ''} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Dirección del restaurante" className="japan-input w-full" />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-[10px] font-bold uppercase tracking-wider mb-1.5 block" style={labelStyle}><span className="flex items-center gap-1"><Calendar size={10} /> Fecha reserva</span></label>
-          <input type="date" value={form.reservation_date || ''} onChange={(e) => setForm({ ...form, reservation_date: e.target.value || null })} className="japan-input w-full" />
-        </div>
-        <div>
-          <label className="text-[10px] font-bold uppercase tracking-wider mb-1.5 block" style={labelStyle}><span className="flex items-center gap-1"><Clock size={10} /> Hora reserva</span></label>
-          <input type="time" value={form.reservation_time || ''} onChange={(e) => setForm({ ...form, reservation_time: e.target.value })} className="japan-input w-full" />
-        </div>
-      </div>
-      <div>
-        <label className="text-[10px] font-bold uppercase tracking-wider mb-1.5 block" style={labelStyle}>Notas</label>
-        <textarea value={form.notes || ''} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={3} placeholder="Notas, horarios, precios, cómo reservar..." className="japan-input w-full resize-none" />
-      </div>
-      <button
-        type="button"
-        onClick={() => setForm({ ...form, in_itinerary: !form.in_itinerary })}
-        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all ${form.in_itinerary ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'border-slate-200 hover:border-slate-300'}`}
-        style={!form.in_itinerary ? { color: '#475569' } : {}}
-      >
-        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${form.in_itinerary ? 'bg-emerald-500 border-emerald-500' : 'border-slate-400'}`}>
-          {form.in_itinerary && <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
-        </div>
-        <div className="text-left">
-          <p className="text-sm font-semibold">Añadir al Itinerario</p>
-          {hasCalendarSync
-            ? <p className="text-[11px] text-emerald-600 mt-0.5">Se creará un evento en el Calendario</p>
-            : <p className="text-[11px] mt-0.5" style={{ color: '#94a3b8' }}>Requiere fecha y hora de reserva para sincronizar</p>}
-        </div>
-        <CalendarCheck size={16} className="ml-auto shrink-0" />
-      </button>
-      {hasCalendarSync && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg">
-          <CalendarCheck size={13} className="text-emerald-600 shrink-0" />
-          <p className="text-[11px] text-emerald-700">Este restaurante aparecerá en el Calendario</p>
-        </div>
-      )}
-      <div className="flex justify-end gap-2 pt-1">
-        <button onClick={onCancel} className="japan-btn border border-slate-300 hover:bg-slate-100 gap-2" style={{ color: '#475569' }}><X size={15} /><span>Cancelar</span></button>
-        <button onClick={onSave} disabled={!form.name} className="japan-btn-primary gap-2 disabled:opacity-40"><Save size={15} /><span>{title}</span></button>
-      </div>
-    </div>
-  );
-}
-
-function RestaurantCard({ r, onEdit, onDelete }: { r: Restaurant; onEdit: (r: Restaurant) => void; onDelete: (id: string) => void }) {
-  const style = CITY_STYLES[r.city] || CITY_STYLES['Osaka'];
-  const formatDate = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
-  const formatPrice = (p: number) => p > 0 ? `¥${p.toLocaleString('es-ES')}` : null;
-  const hasReservation = r.reservation_date && r.reservation_time;
-
-  return (
-    <div className={`rounded-2xl p-4 border ${style.border} transition-all group hover:shadow-md`} style={GLASS_CARD}>
-      <div className="flex items-start gap-3">
-        <div className={`p-2.5 ${style.bg} rounded-xl shrink-0`}>
-          <UtensilsCrossed style={{ color: style.color }} size={18} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2 mb-1.5">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h4 className="text-sm font-bold" style={{ color: '#0f172a' }}>{r.name}</h4>
-                {r.in_itinerary && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 border border-emerald-300 text-emerald-700">
-                    <CalendarCheck size={9} />En itinerario
-                  </span>
-                )}
-              </div>
-              {r.cuisine_type && <p className="text-xs font-medium mt-0.5" style={{ color: '#475569' }}>{r.cuisine_type}</p>}
-            </div>
-            <div className="flex items-center gap-1 shrink-0">
-              {r.priority === 'high' && (
-                <div className="flex items-center gap-1 bg-amber-100 border border-amber-300 rounded-full px-2 py-0.5">
-                  <Star className="text-amber-600" size={10} />
-                  <span className="text-[10px] font-bold text-amber-700 hidden sm:inline">{PRIORITY_LABELS[r.priority]}</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {r.address && (
-            <div className="flex items-start gap-1.5 text-xs mb-1.5" style={{ color: '#475569' }}>
-              <MapPin size={11} className="mt-0.5 shrink-0" />
-              <span className="leading-relaxed">{r.address}</span>
-            </div>
-          )}
-
-          <div className="flex flex-wrap items-center gap-3 mt-2">
-            {hasReservation && (
-              <div className="flex items-center gap-1.5 text-xs">
-                <Calendar size={11} style={{ color: style.color }} className="shrink-0" />
-                <span className={`${style.text} font-semibold`}>{formatDate(r.reservation_date!)}</span>
-                <Clock size={10} style={{ color: '#94a3b8' }} />
-                <span className="font-semibold" style={{ color: '#334155' }}>{r.reservation_time}</span>
-              </div>
-            )}
-            {!hasReservation && r.reservation_date && (
-              <div className="flex items-center gap-1.5 text-xs">
-                <Calendar size={11} style={{ color: style.color }} className="shrink-0" />
-                <span className={`${style.text} font-semibold`}>{formatDate(r.reservation_date)}</span>
-              </div>
-            )}
-            {formatPrice(r.avg_price_per_person) && (
-              <div className="flex items-center gap-1 text-xs">
-                <Banknote size={11} className="text-amber-600 shrink-0" />
-                <span className="text-amber-700 font-bold">{formatPrice(r.avg_price_per_person)}</span>
-                <span style={{ color: '#94a3b8' }}>/persona</span>
-              </div>
-            )}
-          </div>
-
-          <ExpandableNotes notes={r.notes} />
-        </div>
-      </div>
-
-      <div className="flex justify-end gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button onClick={() => onEdit(r)} className="min-w-[34px] min-h-[34px] flex items-center justify-center hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-all" style={{ color: '#64748b' }}>
-          <Pencil size={13} />
-        </button>
-        <button onClick={() => onDelete(r.id)} className="min-w-[34px] min-h-[34px] flex items-center justify-center hover:text-red-500 hover:bg-red-50 rounded-lg transition-all" style={{ color: '#64748b' }}>
-          <Trash2 size={13} />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-export default function Restaurantes() {
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  const [editForm, setEditForm] = useState<Partial<Restaurant>>({});
-  const [newForm, setNewForm] = useState<Partial<Restaurant>>(EMPTY_R);
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [filterCity, setFilterCity] = useState<string>('all');
-
-  useEffect(() => { loadRestaurants(); }, []);
-
-  const loadRestaurants = async () => {
-    const { data } = await supabase.from('restaurants').select('*').order('city');
-    if (data) setRestaurants(data.map((r) => ({
-      ...r,
-      reservation_time: r.reservation_time ?? '',
-      avg_price_per_person: r.avg_price_per_person ?? 0,
-      in_itinerary: r.in_itinerary ?? false,
-    })));
-  };
-
-  const openEdit = (r: Restaurant) => { setEditForm({ ...r }); setIsEditOpen(true); };
-
-  const saveEdit = async () => {
-    if (!editForm.id) return;
-    const { id, ...updates } = editForm as Restaurant;
-    await supabase.from('restaurants').update(updates).eq('id', id);
-    const updated = { ...editForm, id } as Restaurant;
-    setRestaurants((prev) => prev.map((r) => r.id === id ? updated : r));
-    await syncRestaurantToCalendar(updated);
-    setIsEditOpen(false);
-  };
-
-  const addRestaurant = async () => {
-    const { data } = await supabase.from('restaurants').insert(newForm).select().maybeSingle();
-    if (data) {
-      const r: Restaurant = { ...data, reservation_time: data.reservation_time ?? '', avg_price_per_person: data.avg_price_per_person ?? 0, in_itinerary: data.in_itinerary ?? false };
-      setRestaurants((prev) => [...prev, r].sort((a, b) => a.city.localeCompare(b.city)));
-      await syncRestaurantToCalendar(r);
-      setIsAddOpen(false);
-      setNewForm(EMPTY_R);
-    }
-  };
-
-  const deleteRestaurant = async (id: string) => {
-    setRestaurants((prev) => prev.filter((r) => r.id !== id));
-    await supabase.from('restaurants').delete().eq('id', id);
-    await supabase.from('calendar_events').delete().eq('source', 'restaurant').eq('source_id', id);
-    setDeleteConfirm(null);
-  };
-
-  const filtered = filterCity === 'all' ? restaurants : restaurants.filter((r) => r.city === filterCity);
-  const groupedByCity = filtered.reduce<Record<string, Restaurant[]>>((acc, r) => {
-    acc[r.city] = acc[r.city] || [];
-    acc[r.city].push(r);
+  const uniqueCities = [...new Set(items.map((i) => i.day_city))];
+  const totalMeals = items.length;
+  const serviceCount = items.reduce<Record<string, number>>((acc, i) => {
+    const s = i.restaurant_service || 'Sin servicio';
+    acc[s] = (acc[s] || 0) + 1;
     return acc;
   }, {});
 
-  const totalWithReservation = restaurants.filter((r) => r.reservation_date && r.reservation_time).length;
-  const totalInItinerary = restaurants.filter((r) => r.in_itinerary).length;
-
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h2
-            className="text-3xl font-extrabold mb-2"
-            style={{
-              background: 'linear-gradient(90deg, #0e7490 0%, #be185d 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-            }}
-          >
-            Restaurantes
-          </h2>
-          <p className="text-sm font-medium" style={{ color: '#334155' }}>Experiencias gastronómicas en Japón</p>
-        </div>
-        <button onClick={() => setIsAddOpen(true)} className="japan-btn-primary gap-2 shrink-0">
-          <Plus size={16} /><span className="hidden sm:block">Añadir</span>
-        </button>
+      {/* Header */}
+      <div>
+        <h2
+          className="text-3xl font-extrabold mb-2"
+          style={{
+            background: 'linear-gradient(90deg, #ea580c 0%, #be185d 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+          }}
+        >
+          Plan Gastronómico
+        </h2>
+        <p className="text-sm font-medium" style={{ color: '#334155' }}>
+          Todas las comidas planificadas en el itinerario
+        </p>
       </div>
 
-      {restaurants.length > 0 && (
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { value: restaurants.length, label: 'Restaurantes', color: '#0e7490' },
-            { value: totalWithReservation, label: 'Con reserva', color: '#b45309' },
-            { value: totalInItinerary, label: 'En itinerario', color: '#059669' },
-          ].map(({ value, label, color }) => (
-            <div key={label} className="rounded-xl p-3 text-center" style={GLASS_CARD}>
-              <p className="text-xl font-black" style={{ color }}>{value}</p>
-              <p className="text-[11px] font-semibold mt-0.5" style={{ color: '#475569' }}>{label}</p>
+      {/* Stats Row */}
+      {items.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="rounded-xl p-3 text-center" style={GLASS_CARD}>
+            <p className="text-xl font-black" style={{ color: '#ea580c' }}>{totalMeals}</p>
+            <p className="text-[11px] font-semibold mt-0.5" style={{ color: '#475569' }}>Comidas</p>
+          </div>
+          <div className="rounded-xl p-3 text-center" style={GLASS_CARD}>
+            <p className="text-xl font-black" style={{ color: '#0e7490' }}>{uniqueCities.length}</p>
+            <p className="text-[11px] font-semibold mt-0.5" style={{ color: '#475569' }}>Ciudades</p>
+          </div>
+          {Object.entries(serviceCount).slice(0, 2).map(([service, count]) => (
+            <div key={service} className="rounded-xl p-3 text-center" style={GLASS_CARD}>
+              <p className="text-xl font-black" style={{ color: '#be185d' }}>{count}</p>
+              <p className="text-[11px] font-semibold mt-0.5" style={{ color: '#475569' }}>{service}</p>
             </div>
           ))}
         </div>
       )}
 
-      <div className="flex gap-2 flex-wrap">
-        {(['all', ...CITIES] as const).map((c) => (
-          <button
-            key={c}
-            onClick={() => setFilterCity(c)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
-              filterCity === c ? 'bg-cyan-600 text-white border-cyan-600' : 'border-slate-300 hover:border-slate-400'
-            }`}
-            style={filterCity !== c ? { color: '#475569' } : {}}
-          >
-            {c === 'all' ? 'Todos' : c}
-          </button>
-        ))}
-      </div>
-
-      <div className="space-y-6">
-        {Object.entries(groupedByCity).map(([city, items]) => {
-          const style = CITY_STYLES[city] || CITY_STYLES['Osaka'];
-          return (
-            <div key={city}>
-              <div className="flex items-center gap-2 mb-3">
-                <span className={`w-2.5 h-2.5 rounded-full ${style.dot}`} />
-                <h3 className={`text-sm font-bold ${style.text}`}>{city}</h3>
-                <span className="text-xs font-medium" style={{ color: '#94a3b8' }}>({items.length})</span>
-              </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                {items.map((r) => (
-                  <RestaurantCard key={r.id} r={r} onEdit={openEdit} onDelete={setDeleteConfirm} />
-                ))}
-              </div>
+      {/* Table */}
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'rgba(234,88,12,0.20)', borderTopColor: '#ea580c' }} />
+        </div>
+      ) : items.length === 0 ? (
+        <div className="text-center py-16 rounded-2xl" style={{ background: 'rgba(255,255,255,0.60)', border: '1px solid rgba(255,255,255,0.50)' }}>
+          <UtensilsCrossed size={36} style={{ color: '#94a3b8' }} className="mx-auto mb-3" />
+          <p className="font-semibold mb-1" style={{ color: '#475569' }}>Sin comidas planificadas</p>
+          <p className="text-sm" style={{ color: '#94a3b8' }}>
+            Añade actividades de tipo "Comida" en el itinerario y aparecerán aquí automáticamente.
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-2xl overflow-hidden" style={GLASS_CARD}>
+          {/* Table Header */}
+          <div className="hidden sm:grid grid-cols-12 gap-2 px-4 py-3 border-b border-slate-200/60">
+            <div className="col-span-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#64748b' }}>Ciudad</span>
             </div>
-          );
-        })}
-        {filtered.length === 0 && (
-          <div className="text-center py-16 rounded-2xl" style={{ background: 'rgba(255,255,255,0.60)', border: '1px solid rgba(255,255,255,0.50)' }}>
-            <p className="font-medium" style={{ color: '#475569' }}>Sin restaurantes. Añade el primero.</p>
+            <div className="col-span-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#64748b' }}>Día</span>
+            </div>
+            <div className="col-span-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#64748b' }}>Servicio</span>
+            </div>
+            <div className="col-span-3">
+              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#64748b' }}>Restaurante</span>
+            </div>
+            <div className="col-span-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#64748b' }}>Tipo de comida</span>
+            </div>
+            <div className="col-span-2 text-right">
+              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#64748b' }}>Precio medio</span>
+            </div>
           </div>
-        )}
-      </div>
 
-      <Modal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} title="Editar restaurante">
-        <RestaurantForm form={editForm} setForm={setEditForm as React.Dispatch<React.SetStateAction<Partial<Restaurant>>>} onSave={saveEdit} onCancel={() => setIsEditOpen(false)} title="Guardar" />
-      </Modal>
-      <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title="Añadir restaurante">
-        <RestaurantForm form={newForm} setForm={setNewForm as React.Dispatch<React.SetStateAction<Partial<Restaurant>>>} onSave={addRestaurant} onCancel={() => setIsAddOpen(false)} title="Añadir" />
-      </Modal>
-      <Modal isOpen={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title="Eliminar restaurante" size="sm">
-        <div className="space-y-4">
-          <p className="text-sm font-medium" style={{ color: '#1e3a5f' }}>¿Eliminar este restaurante? Esta acción no se puede deshacer.</p>
-          <div className="flex justify-end gap-2">
-            <button onClick={() => setDeleteConfirm(null)} className="japan-btn border border-slate-300 hover:bg-slate-100" style={{ color: '#475569' }}>Cancelar</button>
-            <button onClick={() => deleteConfirm && deleteRestaurant(deleteConfirm)} className="japan-btn-danger gap-2"><Trash2 size={15} /><span>Eliminar</span></button>
+          {/* Rows */}
+          <div className="divide-y divide-slate-100/70">
+            {items.map((item) => {
+              const cityColor = CITY_COLORS[item.day_city] || '#475569';
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setSelectedItem(item)}
+                  className="w-full grid grid-cols-1 sm:grid-cols-12 gap-1 sm:gap-2 px-4 py-3 text-left transition-all hover:bg-white/80 group"
+                >
+                  {/* Mobile layout */}
+                  <div className="sm:hidden space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: cityColor }} />
+                        <span className="text-xs font-bold" style={{ color: cityColor }}>{item.day_city}</span>
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-100" style={{ color: '#64748b' }}>Día {item.day_number}</span>
+                        <ServiceBadge service={item.restaurant_service} />
+                      </div>
+                      <ChevronRight size={14} style={{ color: '#94a3b8' }} className="group-hover:text-orange-500 transition-colors" />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold" style={{ color: '#0f172a' }}>{item.restaurant_name || item.title}</span>
+                      {item.restaurant_avg_price && (
+                        <span className="text-xs font-bold" style={{ color: '#ea580c' }}>{item.restaurant_avg_price}</span>
+                      )}
+                    </div>
+                    {item.restaurant_food_type && (
+                      <span className="text-xs" style={{ color: '#64748b' }}>{item.restaurant_food_type}</span>
+                    )}
+                  </div>
+
+                  {/* Desktop layout */}
+                  <div className="hidden sm:flex col-span-2 items-center gap-2">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: cityColor }} />
+                    <span className="text-xs font-bold truncate" style={{ color: cityColor }}>{item.day_city}</span>
+                  </div>
+                  <div className="hidden sm:flex col-span-1 items-center">
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-slate-100" style={{ color: '#334155' }}>{item.day_number}</span>
+                  </div>
+                  <div className="hidden sm:flex col-span-2 items-center">
+                    <ServiceBadge service={item.restaurant_service} />
+                  </div>
+                  <div className="hidden sm:flex col-span-3 items-center gap-1.5">
+                    <span className="text-sm font-bold truncate" style={{ color: '#0f172a' }}>{item.restaurant_name || item.title}</span>
+                    <ChevronRight size={12} style={{ color: '#94a3b8' }} className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                  <div className="hidden sm:flex col-span-2 items-center">
+                    <span className="text-xs truncate" style={{ color: '#64748b' }}>{item.restaurant_food_type}</span>
+                  </div>
+                  <div className="hidden sm:flex col-span-2 items-center justify-end">
+                    <span className="text-xs font-bold" style={{ color: '#ea580c' }}>{item.restaurant_avg_price || '—'}</span>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
+      )}
+
+      {/* Detail Modal */}
+      <Modal isOpen={!!selectedItem} onClose={() => setSelectedItem(null)} title="" size="md">
+        {selectedItem && (
+          <div className="space-y-5">
+            {/* Header */}
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-orange-100 shrink-0">
+                <UtensilsCrossed size={22} style={{ color: '#ea580c' }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg font-extrabold" style={{ color: '#0f172a' }}>
+                  {selectedItem.restaurant_name || selectedItem.title}
+                </h3>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <span className="flex items-center gap-1 text-xs font-semibold" style={{ color: CITY_COLORS[selectedItem.day_city] || '#475569' }}>
+                    <MapPin size={11} />
+                    {selectedItem.day_city}
+                  </span>
+                  <span className="text-[10px]" style={{ color: '#94a3b8' }}>·</span>
+                  <span className="text-xs font-medium" style={{ color: '#64748b' }}>Día {selectedItem.day_number}</span>
+                  {selectedItem.time && (
+                    <>
+                      <span className="text-[10px]" style={{ color: '#94a3b8' }}>·</span>
+                      <span className="text-xs font-medium" style={{ color: '#64748b' }}>{selectedItem.time}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+              <button onClick={() => setSelectedItem(null)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                <X size={16} style={{ color: '#64748b' }} />
+              </button>
+            </div>
+
+            {/* Info Grid */}
+            <div className="grid grid-cols-2 gap-3">
+              {selectedItem.restaurant_service && (
+                <div className="rounded-xl p-3 bg-slate-50 border border-slate-100">
+                  <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: '#94a3b8' }}>Servicio</p>
+                  <ServiceBadge service={selectedItem.restaurant_service} />
+                </div>
+              )}
+              {selectedItem.restaurant_avg_price && (
+                <div className="rounded-xl p-3 bg-slate-50 border border-slate-100">
+                  <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: '#94a3b8' }}>Precio medio</p>
+                  <p className="text-sm font-bold" style={{ color: '#ea580c' }}>{selectedItem.restaurant_avg_price}</p>
+                </div>
+              )}
+              {selectedItem.restaurant_food_type && (
+                <div className="rounded-xl p-3 bg-slate-50 border border-slate-100 col-span-2">
+                  <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: '#94a3b8' }}>Tipo de cocina</p>
+                  <p className="text-sm font-semibold" style={{ color: '#334155' }}>{selectedItem.restaurant_food_type}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Notes */}
+            {(selectedItem.restaurant_notes || selectedItem.description) && (
+              <div className="rounded-xl p-4 bg-slate-50 border border-slate-100">
+                <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: '#94a3b8' }}>Notas y detalles</p>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: '#334155' }}>
+                  {selectedItem.restaurant_notes || selectedItem.description}
+                </p>
+              </div>
+            )}
+
+            {/* Action Button */}
+            <button
+              onClick={() => {
+                setSelectedItem(null);
+                onSectionChange?.('itinerario', selectedItem.day_city, selectedItem.day_date);
+              }}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm transition-all hover:shadow-md"
+              style={{ background: 'linear-gradient(135deg, #ea580c, #be185d)', color: 'white' }}
+            >
+              <ExternalLink size={15} />
+              Editar en Itinerario
+            </button>
+          </div>
+        )}
       </Modal>
     </div>
   );
