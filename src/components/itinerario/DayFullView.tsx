@@ -421,7 +421,51 @@ function EditActivityForm({ act, onSave, onCancel }: {
           })}
         </div>
       </div>
-      <DescriptionTextarea value={form.description || ''} onChange={(val) => setForm({ ...form, description: val })} rows={8} />
+      {form.category === 'restaurant' ? (
+        <div className="space-y-3 p-4 rounded-xl border border-orange-200 bg-orange-50/40">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-orange-600 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+            Datos del restaurante
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold mb-1 block" style={{ color: '#475569' }}>Servicio</label>
+              <select value={form.restaurant_service || ''} onChange={(e) => setForm({ ...form, restaurant_service: e.target.value })} className="japan-input">
+                <option value="">— Selecciona —</option>
+                <option value="Desayuno">Desayuno</option>
+                <option value="Almuerzo">Almuerzo</option>
+                <option value="Cena">Cena</option>
+                <option value="Cena opcional">Cena opcional</option>
+                <option value="Snack/Street Food">Snack/Street Food</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold mb-1 block" style={{ color: '#475569' }}>Nombre del Restaurante</label>
+              <input value={form.restaurant_name || ''} onChange={(e) => setForm({ ...form, restaurant_name: e.target.value, title: e.target.value })} placeholder="Ej: Ichiran" className="japan-input" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold mb-1 block" style={{ color: '#475569' }}>Tipo de Comida</label>
+              <input value={form.restaurant_food_type || ''} onChange={(e) => setForm({ ...form, restaurant_food_type: e.target.value })} placeholder="Ej: Ramen Tonkotsu" className="japan-input" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold mb-1 block" style={{ color: '#475569' }}>Precio Medio</label>
+              <input value={form.restaurant_avg_price || ''} onChange={(e) => setForm({ ...form, restaurant_avg_price: e.target.value })} placeholder="Ej: 2.000 - 3.500 ¥" className="japan-input" />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-semibold mb-1 block" style={{ color: '#475569' }}>Dirección / Ubicación</label>
+            <input value={form.description || ''} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Ej: Dotonbori, Osaka" className="japan-input" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold mb-1 block" style={{ color: '#475569' }}>Descripción / Notas</label>
+            <textarea value={form.restaurant_notes || ''} onChange={(e) => setForm({ ...form, restaurant_notes: e.target.value })} rows={3} placeholder="Platos recomendados, detalles de reserva..." className="japan-input resize-none" />
+          </div>
+        </div>
+      ) : (
+        <DescriptionTextarea value={form.description || ''} onChange={(val) => setForm({ ...form, description: val })} rows={8} />
+      )}
       <div className="flex items-center gap-3 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
         <div className="flex-1 japan-input flex items-center gap-2 cursor-pointer hover:border-cyan-400 py-3">
           <Paperclip size={14} style={{ color: '#94a3b8' }} className="shrink-0" />
@@ -448,7 +492,7 @@ function EditActivityForm({ act, onSave, onCancel }: {
       </button>
       <div className="flex gap-2 justify-end">
         <button onClick={onCancel} className="japan-btn border border-slate-300 hover:bg-slate-100 gap-2" style={{ color: '#475569' }}><X size={14} /> Cancelar</button>
-        <button onClick={handleSave} disabled={uploading || !form.title?.trim()} className="japan-btn-primary gap-2 disabled:opacity-50"><Save size={14} /> {uploading ? 'Guardando...' : 'Guardar'}</button>
+        <button onClick={handleSave} disabled={uploading || (form.category === 'restaurant' ? !form.restaurant_name?.trim() : !form.title?.trim())} className="japan-btn-primary gap-2 disabled:opacity-50"><Save size={14} /> {uploading ? 'Guardando...' : 'Guardar'}</button>
       </div>
     </div>
   );
@@ -471,7 +515,7 @@ export default function DayFullView({ day, cityStyle, onBack, days, onNavigateDa
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [form, setForm] = useState({ category: 'activity', time: '', title: '', description: '', has_pending_tasks: false });
+  const [form, setForm] = useState({ category: 'activity', time: '', title: '', description: '', has_pending_tasks: false, restaurant_service: '', restaurant_name: '', restaurant_food_type: '', restaurant_avg_price: '', restaurant_notes: '' });
   const [attachFile, setAttachFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -503,7 +547,8 @@ export default function DayFullView({ day, cityStyle, onBack, days, onNavigateDa
   };
 
   const addActivity = async () => {
-    if (!form.title.trim()) return;
+    const isRestaurant = form.category === 'restaurant';
+    if (isRestaurant ? !form.restaurant_name.trim() : !form.title.trim()) return;
     setUploading(true);
     let attachment_url: string | null = null;
     let attachment_name: string | null = null;
@@ -515,7 +560,7 @@ export default function DayFullView({ day, cityStyle, onBack, days, onNavigateDa
     setUploading(false);
     if (data) {
       setActivities((prev) => [...prev, data].sort((a, b) => (a.time || '').localeCompare(b.time || '')));
-      setForm({ category: 'activity', time: '', title: '', description: '', has_pending_tasks: false });
+      setForm({ category: 'activity', time: '', title: '', description: '', has_pending_tasks: false, restaurant_service: '', restaurant_name: '', restaurant_food_type: '', restaurant_avg_price: '', restaurant_notes: '' });
       setAttachFile(null);
       setIsAddOpen(false);
     }
@@ -703,7 +748,7 @@ export default function DayFullView({ day, cityStyle, onBack, days, onNavigateDa
         footer={
           <div className="flex justify-end gap-2">
             <button onClick={() => { setIsAddOpen(false); setAttachFile(null); }} className="japan-btn border border-slate-300 hover:bg-slate-100 gap-2" style={{ color: '#475569' }}><X size={15} /><span>Cancelar</span></button>
-            <button onClick={addActivity} disabled={!form.title.trim() || uploading} className="japan-btn-primary gap-2 disabled:opacity-40">{uploading ? 'Subiendo...' : 'Añadir'}</button>
+            <button onClick={addActivity} disabled={(form.category === 'restaurant' ? !form.restaurant_name.trim() : !form.title.trim()) || uploading} className="japan-btn-primary gap-2 disabled:opacity-40">{uploading ? 'Subiendo...' : 'Añadir'}</button>
           </div>
         }
       >
@@ -721,17 +766,67 @@ export default function DayFullView({ day, cityStyle, onBack, days, onNavigateDa
               })}
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="col-span-1">
-              <label className="text-xs font-semibold mb-1 block" style={{ color: '#475569' }}>Hora</label>
-              <input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} className="japan-input" />
+          {form.category === 'restaurant' ? (
+            <div className="space-y-3 p-4 rounded-xl border border-orange-200 bg-orange-50/40">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-orange-600 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                Datos del restaurante
+              </p>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-1">
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: '#475569' }}>Hora</label>
+                  <input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} className="japan-input" />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: '#475569' }}>Servicio</label>
+                  <select value={form.restaurant_service} onChange={(e) => setForm({ ...form, restaurant_service: e.target.value })} className="japan-input">
+                    <option value="">— Selecciona —</option>
+                    <option value="Desayuno">Desayuno</option>
+                    <option value="Almuerzo">Almuerzo</option>
+                    <option value="Cena">Cena</option>
+                    <option value="Cena opcional">Cena opcional</option>
+                    <option value="Snack/Street Food">Snack/Street Food</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-semibold mb-1 block" style={{ color: '#475569' }}>Nombre del Restaurante</label>
+                <input value={form.restaurant_name} onChange={(e) => setForm({ ...form, restaurant_name: e.target.value, title: e.target.value })} placeholder="Ej: Ichiran, Acchichi Honpo" className="japan-input" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: '#475569' }}>Tipo de Comida</label>
+                  <input value={form.restaurant_food_type} onChange={(e) => setForm({ ...form, restaurant_food_type: e.target.value })} placeholder="Ej: Ramen Tonkotsu, Yakiniku" className="japan-input" />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: '#475569' }}>Precio Medio</label>
+                  <input value={form.restaurant_avg_price} onChange={(e) => setForm({ ...form, restaurant_avg_price: e.target.value })} placeholder="Ej: 2.000 - 3.500 ¥" className="japan-input" />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-semibold mb-1 block" style={{ color: '#475569' }}>Dirección / Ubicación</label>
+                <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Ej: Dotonbori, Osaka" className="japan-input" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold mb-1 block" style={{ color: '#475569' }}>Descripción / Notas</label>
+                <textarea value={form.restaurant_notes} onChange={(e) => setForm({ ...form, restaurant_notes: e.target.value })} rows={3} placeholder="Platos recomendados, detalles de reserva, notas..." className="japan-input resize-none" />
+              </div>
             </div>
-            <div className="col-span-2">
-              <label className="text-xs font-semibold mb-1 block" style={{ color: '#475569' }}>Título</label>
-              <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Ej: Fushimi Inari" className="japan-input" onKeyDown={(e) => e.key === 'Enter' && addActivity()} />
-            </div>
-          </div>
-          <DescriptionTextarea value={form.description} onChange={(val) => setForm({ ...form, description: val })} rows={6} placeholder="Detalles, notas, reservas..." />
+          ) : (
+            <>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-1">
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: '#475569' }}>Hora</label>
+                  <input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} className="japan-input" />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs font-semibold mb-1 block" style={{ color: '#475569' }}>Título</label>
+                  <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Ej: Fushimi Inari" className="japan-input" onKeyDown={(e) => e.key === 'Enter' && addActivity()} />
+                </div>
+              </div>
+              <DescriptionTextarea value={form.description} onChange={(val) => setForm({ ...form, description: val })} rows={6} placeholder="Detalles, notas, reservas..." />
+            </>
+          )}
           <button
             type="button"
             onClick={() => setForm({ ...form, has_pending_tasks: !form.has_pending_tasks })}
