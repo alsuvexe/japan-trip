@@ -199,7 +199,7 @@ export default function DayActivities({ dayId }: { dayId: string }) {
                     <input value={editForm.restaurant_food_type || ''} onChange={(e) => setEditForm({ ...editForm, restaurant_food_type: e.target.value })} placeholder="Tipo comida" className="japan-input text-xs py-2" />
                     <input value={editForm.restaurant_avg_price || ''} onChange={(e) => setEditForm({ ...editForm, restaurant_avg_price: e.target.value })} placeholder="Precio medio" className="japan-input text-xs py-2" />
                   </div>
-                  <textarea value={editForm.restaurant_notes || ''} onChange={(e) => setEditForm({ ...editForm, restaurant_notes: e.target.value })} rows={2} placeholder="Notas del restaurante..." className="japan-input text-xs resize-none" />
+                  <DescriptionTextarea value={editForm.restaurant_notes || ''} onChange={(val) => setEditForm({ ...editForm, restaurant_notes: val })} rows={6} placeholder="Platos recomendados, detalles de reserva, notas..." />
                 </div>
               )}
               <button
@@ -375,7 +375,7 @@ export default function DayActivities({ dayId }: { dayId: string }) {
               </div>
               <div>
                 <label className="text-xs text-slate-600 font-semibold mb-1 block">Descripción / Notas</label>
-                <textarea value={form.restaurant_notes} onChange={(e) => setForm({ ...form, restaurant_notes: e.target.value })} rows={3} placeholder="Platos recomendados, detalles de reserva, notas..." className="japan-input resize-none" />
+                <DescriptionTextarea value={form.restaurant_notes} onChange={(val) => setForm({ ...form, restaurant_notes: val })} rows={6} placeholder="Platos recomendados, detalles de reserva, notas..." />
               </div>
             </div>
           ) : (

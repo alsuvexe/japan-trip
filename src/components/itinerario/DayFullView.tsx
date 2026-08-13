@@ -498,7 +498,7 @@ function EditActivityForm({ act, onSave, onCancel }: {
           </div>
           <div>
             <label className="text-xs font-semibold mb-1 block" style={{ color: '#475569' }}>Descripción / Notas</label>
-            <textarea value={form.restaurant_notes || ''} onChange={(e) => setForm({ ...form, restaurant_notes: e.target.value })} rows={3} placeholder="Platos recomendados, detalles de reserva..." className="japan-input resize-none" />
+            <DescriptionTextarea value={form.restaurant_notes || ''} onChange={(val) => setForm({ ...form, restaurant_notes: val })} rows={6} placeholder="Platos recomendados, detalles de reserva..." />
           </div>
         </div>
       ) : (
@@ -847,7 +847,7 @@ export default function DayFullView({ day, cityStyle, onBack, days, onNavigateDa
               </div>
               <div>
                 <label className="text-xs font-semibold mb-1 block" style={{ color: '#475569' }}>Descripción / Notas</label>
-                <textarea value={form.restaurant_notes} onChange={(e) => setForm({ ...form, restaurant_notes: e.target.value })} rows={3} placeholder="Platos recomendados, detalles de reserva, notas..." className="japan-input resize-none" />
+                <DescriptionTextarea value={form.restaurant_notes} onChange={(val) => setForm({ ...form, restaurant_notes: val })} rows={6} placeholder="Platos recomendados, detalles de reserva, notas..." />
               </div>
             </div>
           ) : (
