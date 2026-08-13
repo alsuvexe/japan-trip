@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Plane, TrainFront, Footprints, Utensils, Camera, Landmark, Sparkles, ChevronRight, ChevronUp, PlusCircle, Pencil, Trash2, Save, X, Clock, AlertCircle, Paperclip, FileText, ExternalLink, Eye, EyeOff, Image as ImageIcon } from 'lucide-react';
+import { Plane, TrainFront, Footprints, Utensils, Camera, Landmark, Sparkles, ChevronRight, ChevronUp, PlusCircle, Pencil, Trash2, Save, X, Clock, AlertCircle, Paperclip, FileText, ExternalLink, Eye, EyeOff, Image as ImageIcon, MapPin } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import Modal from '../Modal';
 import MarkdownRenderer from '../MarkdownRenderer';
@@ -255,14 +255,41 @@ export default function DayActivities({ dayId }: { dayId: string }) {
                   {isExpanded ? <ChevronUp size={13} style={{ color: '#64748b' }} /> : <ChevronRight size={13} style={{ color: '#64748b' }} />}
                 </div>
               </div>
-              {isExpanded && (act.description || act.attachment_url) && (
+              {isExpanded && (act.description || act.attachment_url || (act.category === 'restaurant' && (act.restaurant_notes || act.restaurant_service || act.restaurant_food_type || act.restaurant_avg_price))) && (
                 <div className="px-3 pb-3 border-t border-black/[0.06]">
-                  {act.description && <div className="pl-9 pt-2"><MarkdownRenderer content={act.description} /></div>}
+                  {act.category === 'restaurant' ? (
+                    <div className="pl-9 pt-2 space-y-2">
+                      {act.restaurant_notes && <div><MarkdownRenderer content={act.restaurant_notes} /></div>}
+                      {act.description && (
+                        <p className="flex items-center gap-1.5 text-xs" style={{ color: '#64748b' }}>
+                          <MapPin size={11} className="shrink-0 text-rose-400" />
+                          <span>{act.description}</span>
+                        </p>
+                      )}
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {act.restaurant_service && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-orange-100 text-orange-700 border border-orange-200">{act.restaurant_service}</span>
+                        )}
+                        {act.restaurant_food_type && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200">{act.restaurant_food_type}</span>
+                        )}
+                        {act.restaurant_avg_price && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">{act.restaurant_avg_price}</span>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    act.description && <div className="pl-9 pt-2"><MarkdownRenderer content={act.description} /></div>
+                  )}
                   {act.attachment_url && (
                     <div className="pl-9 pt-2">
-                      <a href={act.attachment_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs text-cyan-700 hover:text-cyan-800 bg-cyan-50 border border-cyan-200 rounded-lg px-2.5 py-1.5">
-                        <FileText size={11} /><span className="max-w-[180px] truncate">{act.attachment_name || 'Adjunto'}</span><ExternalLink size={9} className="shrink-0" />
-                      </a>
+                      {/\.(jpg|jpeg|png|gif|webp)$/i.test(act.attachment_url) ? (
+                        <img src={act.attachment_url} alt={act.attachment_name || 'Adjunto'} className="rounded-xl max-h-48 object-cover border border-slate-200 shadow-sm" />
+                      ) : (
+                        <a href={act.attachment_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs text-cyan-700 hover:text-cyan-800 bg-cyan-50 border border-cyan-200 rounded-lg px-2.5 py-1.5">
+                          <FileText size={11} /><span className="max-w-[180px] truncate">{act.attachment_name || 'Adjunto'}</span><ExternalLink size={9} className="shrink-0" />
+                        </a>
+                      )}
                     </div>
                   )}
                 </div>

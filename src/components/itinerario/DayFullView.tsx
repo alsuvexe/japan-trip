@@ -278,7 +278,8 @@ function ActivityCard({ act, cityStyle, onEdit, onDelete }: {
   const [expanded, setExpanded] = useState(false);
   const cat = getCatStyle(act.category);
   const CatIcon = cat.icon;
-  const hasDetail = !!(act.description || act.attachment_url);
+  const isRestaurant = act.category === 'restaurant';
+  const hasDetail = !!(act.description || act.attachment_url || (isRestaurant && (act.restaurant_notes || act.restaurant_service || act.restaurant_food_type || act.restaurant_avg_price)));
 
   return (
     <motion.div
@@ -324,8 +325,8 @@ function ActivityCard({ act, cityStyle, onEdit, onDelete }: {
               </div>
             )}
           </div>
-          {!expanded && act.description && (
-            <p className="text-sm mt-1 line-clamp-2 leading-relaxed" style={{ color: '#334155' }}>{act.description.replace(/!\[.*?\]\(.*?\)/g, '').replace(/[#*`[\]]/g, '').trim()}</p>
+          {!expanded && (isRestaurant ? act.restaurant_notes : act.description) && (
+            <p className="text-sm mt-1 line-clamp-2 leading-relaxed" style={{ color: '#334155' }}>{(isRestaurant ? act.restaurant_notes || '' : act.description || '').replace(/!\[.*?\]\(.*?\)/g, '').replace(/[#*`[\]]/g, '').trim()}</p>
           )}
         </div>
 
@@ -357,22 +358,53 @@ function ActivityCard({ act, cityStyle, onEdit, onDelete }: {
             className="overflow-hidden"
           >
             <div className="px-5 pb-5 pt-3 border-t border-slate-100 space-y-4">
-              {act.description && (
-                <div className="prose-sm max-w-none">
-                  <MarkdownRenderer content={act.description} />
+              {isRestaurant ? (
+                <div className="space-y-3">
+                  {act.restaurant_notes && (
+                    <div className="prose-sm max-w-none">
+                      <MarkdownRenderer content={act.restaurant_notes} />
+                    </div>
+                  )}
+                  {act.description && (
+                    <p className="flex items-center gap-2 text-sm" style={{ color: '#64748b' }}>
+                      <MapPin size={13} className="shrink-0 text-rose-400" />
+                      <span>{act.description}</span>
+                    </p>
+                  )}
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {act.restaurant_service && (
+                      <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-lg bg-orange-100 text-orange-700 border border-orange-200">{act.restaurant_service}</span>
+                    )}
+                    {act.restaurant_food_type && (
+                      <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200">{act.restaurant_food_type}</span>
+                    )}
+                    {act.restaurant_avg_price && (
+                      <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">{act.restaurant_avg_price}</span>
+                    )}
+                  </div>
                 </div>
+              ) : (
+                act.description && (
+                  <div className="prose-sm max-w-none">
+                    <MarkdownRenderer content={act.description} />
+                  </div>
+                )
               )}
               {act.attachment_url && (
-                <a
-                  href={act.attachment_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 text-sm text-cyan-700 hover:text-cyan-600 bg-cyan-50 border border-cyan-200 rounded-xl px-4 py-2.5"
-                >
-                  <FileText size={14} />
-                  <span className="max-w-xs truncate">{act.attachment_name || 'Adjunto'}</span>
-                  <ExternalLink size={12} className="shrink-0" />
-                </a>
+                /\.(jpg|jpeg|png|gif|webp)$/i.test(act.attachment_url) ? (
+                  <img src={act.attachment_url} alt={act.attachment_name || 'Adjunto'} className="rounded-xl max-h-64 object-cover border border-slate-200 shadow-sm" />
+                ) : (
+                  <a
+                    href={act.attachment_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-sm text-cyan-700 hover:text-cyan-600 bg-cyan-50 border border-cyan-200 rounded-xl px-4 py-2.5"
+                  >
+                    <FileText size={14} />
+                    <span className="max-w-xs truncate">{act.attachment_name || 'Adjunto'}</span>
+                    <ExternalLink size={12} className="shrink-0" />
+                  </a>
+                )
               )}
             </div>
           </motion.div>
