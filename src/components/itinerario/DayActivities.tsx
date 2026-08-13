@@ -261,10 +261,16 @@ export default function DayActivities({ dayId }: { dayId: string }) {
                     <div className="pl-9 pt-2 space-y-2">
                       {act.restaurant_notes && <div><MarkdownRenderer content={act.restaurant_notes} /></div>}
                       {act.description && (
-                        <p className="flex items-center gap-1.5 text-xs" style={{ color: '#64748b' }}>
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((act.restaurant_name ? act.restaurant_name + ' ' : '') + act.description)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 text-xs hover:underline cursor-pointer transition-colors"
+                          style={{ color: '#64748b' }}
+                        >
                           <MapPin size={11} className="shrink-0 text-rose-400" />
                           <span>{act.description}</span>
-                        </p>
+                        </a>
                       )}
                       <div className="flex flex-wrap gap-1.5 pt-1">
                         {act.restaurant_service && (
@@ -274,7 +280,7 @@ export default function DayActivities({ dayId }: { dayId: string }) {
                           <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200">{act.restaurant_food_type}</span>
                         )}
                         {act.restaurant_avg_price && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">{act.restaurant_avg_price}</span>
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">{act.restaurant_avg_price.includes('¥') ? act.restaurant_avg_price : `${act.restaurant_avg_price} ¥`}</span>
                         )}
                       </div>
                     </div>

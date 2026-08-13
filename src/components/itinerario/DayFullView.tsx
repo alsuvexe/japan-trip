@@ -366,10 +366,16 @@ function ActivityCard({ act, cityStyle, onEdit, onDelete }: {
                     </div>
                   )}
                   {act.description && (
-                    <p className="flex items-center gap-2 text-sm" style={{ color: '#64748b' }}>
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((act.restaurant_name ? act.restaurant_name + ' ' : '') + act.description)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-sm hover:underline cursor-pointer transition-colors"
+                      style={{ color: '#64748b' }}
+                    >
                       <MapPin size={13} className="shrink-0 text-rose-400" />
                       <span>{act.description}</span>
-                    </p>
+                    </a>
                   )}
                   <div className="flex flex-wrap gap-2 pt-1">
                     {act.restaurant_service && (
@@ -379,7 +385,7 @@ function ActivityCard({ act, cityStyle, onEdit, onDelete }: {
                       <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200">{act.restaurant_food_type}</span>
                     )}
                     {act.restaurant_avg_price && (
-                      <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">{act.restaurant_avg_price}</span>
+                      <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">{act.restaurant_avg_price.includes('¥') ? act.restaurant_avg_price : `${act.restaurant_avg_price} ¥`}</span>
                     )}
                   </div>
                 </div>
