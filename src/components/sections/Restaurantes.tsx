@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { UtensilsCrossed, MapPin, X, ExternalLink, ChevronRight } from 'lucide-react';
+import { UtensilsCrossed, MapPin, X, ExternalLink, ChevronRight, Clock, DollarSign } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import Modal from '../Modal';
 
@@ -278,69 +278,128 @@ export default function Restaurantes({ onSectionChange }: RestaurantesSectionPro
       )}
 
       {/* Detail Modal */}
-      <Modal isOpen={!!selectedItem} onClose={() => setSelectedItem(null)} title="" size="md">
+      <Modal isOpen={!!selectedItem} onClose={() => setSelectedItem(null)} title="" size="xl">
         {selectedItem && (
           <div className="space-y-5">
-            {/* Header */}
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-orange-100 shrink-0">
-                <UtensilsCrossed size={22} style={{ color: '#ea580c' }} />
+            {/* Header - large restaurant name with high contrast */}
+            <div className="rounded-xl p-5" style={{ background: 'linear-gradient(135deg, #1e293b, #0f172a)' }}>
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-orange-500/20 border border-orange-400/30 shrink-0">
+                  <UtensilsCrossed size={26} className="text-orange-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-2xl sm:text-3xl font-bold text-white truncate">
+                    {selectedItem.restaurant_name || selectedItem.title}
+                  </h2>
+                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                    <span className="flex items-center gap-1 text-xs font-semibold text-orange-300">
+                      <MapPin size={11} />
+                      {selectedItem.day_city}
+                    </span>
+                    <span className="text-[10px] text-slate-500">·</span>
+                    <span className="text-xs font-medium text-slate-400">Día {selectedItem.day_number}</span>
+                    {selectedItem.time && (
+                      <>
+                        <span className="text-[10px] text-slate-500">·</span>
+                        <span className="text-xs font-medium text-slate-400 flex items-center gap-1"><Clock size={10} />{selectedItem.time}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-extrabold" style={{ color: '#0f172a' }}>
-                  {selectedItem.restaurant_name || selectedItem.title}
-                </h3>
-                <div className="flex items-center gap-2 mt-1 flex-wrap">
-                  <span className="flex items-center gap-1 text-xs font-semibold" style={{ color: CITY_COLORS[selectedItem.day_city] || '#475569' }}>
-                    <MapPin size={11} />
-                    {selectedItem.day_city}
-                  </span>
-                  <span className="text-[10px]" style={{ color: '#94a3b8' }}>·</span>
-                  <span className="text-xs font-medium" style={{ color: '#64748b' }}>Día {selectedItem.day_number}</span>
-                  {selectedItem.time && (
-                    <>
-                      <span className="text-[10px]" style={{ color: '#94a3b8' }}>·</span>
-                      <span className="text-xs font-medium" style={{ color: '#64748b' }}>{selectedItem.time}</span>
-                    </>
+            </div>
+
+            {/* 2-column layout */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* Left column - metadata cards */}
+              <div className="space-y-4">
+                {/* Info cards */}
+                <div className="grid grid-cols-2 gap-3">
+                  {selectedItem.restaurant_service && (
+                    <div className="rounded-xl p-3 bg-orange-50 border border-orange-100">
+                      <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: '#94a3b8' }}>Servicio</p>
+                      <ServiceBadge service={selectedItem.restaurant_service} />
+                    </div>
+                  )}
+                  {selectedItem.restaurant_food_type && (
+                    <div className="rounded-xl p-3 bg-amber-50 border border-amber-100">
+                      <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: '#94a3b8' }}>Tipo de cocina</p>
+                      <p className="text-sm font-semibold" style={{ color: '#92400e' }}>{selectedItem.restaurant_food_type}</p>
+                    </div>
+                  )}
+                  {selectedItem.restaurant_avg_price && (
+                    <div className="rounded-xl p-3 bg-emerald-50 border border-emerald-100">
+                      <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: '#94a3b8' }}>Precio medio</p>
+                      <p className="text-sm font-bold flex items-center gap-1" style={{ color: '#065f46' }}>
+                        <DollarSign size={12} />
+                        {selectedItem.restaurant_avg_price.includes('¥') ? selectedItem.restaurant_avg_price : `${selectedItem.restaurant_avg_price} ¥`}
+                      </p>
+                    </div>
                   )}
                 </div>
-              </div>
-              <button onClick={() => setSelectedItem(null)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                <X size={16} style={{ color: '#64748b' }} />
-              </button>
-            </div>
 
-            {/* Info Grid */}
-            <div className="grid grid-cols-2 gap-3">
-              {selectedItem.restaurant_service && (
-                <div className="rounded-xl p-3 bg-slate-50 border border-slate-100">
-                  <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: '#94a3b8' }}>Servicio</p>
-                  <ServiceBadge service={selectedItem.restaurant_service} />
-                </div>
-              )}
-              {selectedItem.restaurant_avg_price && (
-                <div className="rounded-xl p-3 bg-slate-50 border border-slate-100">
-                  <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: '#94a3b8' }}>Precio medio</p>
-                  <p className="text-sm font-bold" style={{ color: '#ea580c' }}>{selectedItem.restaurant_avg_price}</p>
-                </div>
-              )}
-              {selectedItem.restaurant_food_type && (
-                <div className="rounded-xl p-3 bg-slate-50 border border-slate-100 col-span-2">
-                  <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: '#94a3b8' }}>Tipo de cocina</p>
-                  <p className="text-sm font-semibold" style={{ color: '#334155' }}>{selectedItem.restaurant_food_type}</p>
-                </div>
-              )}
-            </div>
+                {/* Address with Google Maps link */}
+                {selectedItem.description && (
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((selectedItem.restaurant_name ? selectedItem.restaurant_name + ' ' : '') + selectedItem.description)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100 hover:border-slate-200 transition-all group cursor-pointer"
+                  >
+                    <MapPin size={16} className="shrink-0 text-rose-400 group-hover:text-rose-500 transition-colors" />
+                    <span className="text-sm font-medium group-hover:underline" style={{ color: '#334155' }}>{selectedItem.description}</span>
+                    <ExternalLink size={11} className="shrink-0 text-slate-400 ml-auto" />
+                  </a>
+                )}
 
-            {/* Notes */}
-            {(selectedItem.restaurant_notes || selectedItem.description) && (
-              <div className="rounded-xl p-4 bg-slate-50 border border-slate-100">
-                <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: '#94a3b8' }}>Notas y detalles</p>
-                <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: '#334155' }}>
-                  {selectedItem.restaurant_notes || selectedItem.description}
-                </p>
+                {/* Image gallery from notes URLs */}
+                {(() => {
+                  const notesText = selectedItem.restaurant_notes || '';
+                  const imgRegex = /(https?:\/\/[^\s"'<>)]+\.(?:jpg|jpeg|png|webp|gif)(?:\?[^\s"'<>)]*)?)/gi;
+                  const imageUrls = notesText.match(imgRegex) || [];
+                  if (imageUrls.length === 0) return null;
+                  return (
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#94a3b8' }}>Galería</p>
+                      <div className={`grid gap-2 ${imageUrls.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                        {imageUrls.map((url: string, i: number) => (
+                          <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-xl border border-slate-200 hover:border-slate-300 transition-all hover:shadow-md">
+                            <img src={url} alt={`Foto ${i + 1}`} className="w-full h-36 object-cover" loading="lazy" />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Attachment image */}
+                {selectedItem.attachment_url && /\.(jpg|jpeg|png|gif|webp)$/i.test(selectedItem.attachment_url) && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#94a3b8' }}>Adjunto</p>
+                    <a href={selectedItem.attachment_url} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-xl border border-slate-200 hover:shadow-md transition-all">
+                      <img src={selectedItem.attachment_url} alt={selectedItem.attachment_name || 'Adjunto'} className="w-full max-h-48 object-cover" loading="lazy" />
+                    </a>
+                  </div>
+                )}
               </div>
-            )}
+
+              {/* Right column - Notes */}
+              <div className="space-y-4">
+                {(selectedItem.restaurant_notes || selectedItem.description) && (
+                  <div className="rounded-xl p-4 bg-slate-50 border border-slate-100 h-full">
+                    <p className="text-[10px] font-bold uppercase tracking-wider mb-3" style={{ color: '#94a3b8' }}>Notas y detalles</p>
+                    <div className="text-sm leading-relaxed whitespace-pre-wrap space-y-3" style={{ color: '#334155' }}>
+                      {(() => {
+                        const text = selectedItem.restaurant_notes || selectedItem.description || '';
+                        const imgRegex = /(https?:\/\/[^\s"'<>)]+\.(?:jpg|jpeg|png|webp|gif)(?:\?[^\s"'<>)]*)?)/gi;
+                        const cleanText = text.replace(imgRegex, '').trim();
+                        return cleanText || null;
+                      })()}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
 
             {/* Action Button */}
             <button
