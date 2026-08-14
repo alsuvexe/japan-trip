@@ -9,6 +9,7 @@ import Modal from '../Modal';
 import DayFullView from './DayFullView';
 import { WeatherWidgetFull } from './WeatherWidget';
 import { useAdmin } from '../../lib/AdminContext';
+import { useReadOnly } from '../../lib/ReadOnlyContext';
 import type { CityConfig } from './JapanMap';
 
 interface ItineraryDay {
@@ -115,6 +116,8 @@ export default function CityDetailPanel({ city, onClose, initialDayDate }: CityD
   const [days, setDays] = useState<ItineraryDay[]>([]);
   const [selectedDay, setSelectedDay] = useState<ItineraryDay | null>(null);
   const { isAdmin } = useAdmin();
+  const isReadOnly = useReadOnly();
+  const canEdit = isAdmin && !isReadOnly;
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingDay, setEditingDay] = useState<ItineraryDay | null>(null);
@@ -253,7 +256,7 @@ export default function CityDetailPanel({ city, onClose, initialDayDate }: CityD
                   >
                     {dateRangePill}
                   </span>
-                  {isAdmin && (
+                  {canEdit && (
                   <button
                     onClick={() => setIsAddOpen(true)}
                     className={`flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl border ${city.borderColor} ${city.bgColor} ${city.textColor} hover:opacity-80 transition-opacity font-semibold min-h-[44px]`}
@@ -297,7 +300,7 @@ export default function CityDetailPanel({ city, onClose, initialDayDate }: CityD
                     <p className="text-xl font-bold" style={{ color: '#0f172a' }}>Sin días en {city.name}</p>
                     <p className="text-sm mt-2 leading-relaxed" style={{ color: '#475569' }}>Añade el primer día para comenzar a planificar tu estancia</p>
                   </div>
-                  {isAdmin && (
+                  {canEdit && (
                   <button
                     onClick={() => setIsAddOpen(true)}
                     className={`inline-flex items-center gap-2 px-6 py-3 rounded-xl border ${city.borderColor} ${city.bgColor} ${city.textColor} font-semibold text-sm`}
@@ -316,7 +319,7 @@ export default function CityDetailPanel({ city, onClose, initialDayDate }: CityD
                       onClick={() => setSelectedDay(day)}
                       onEdit={() => { setEditingDay({ ...day }); setIsEditOpen(true); }}
                       onDelete={() => setDeleteConfirm(day.id)}
-                      isAdmin={isAdmin}
+                      isAdmin={canEdit}
                     />
                   ))}
                 </div>
