@@ -3,9 +3,10 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   LayoutDashboard, MapPin, Hotel, UtensilsCrossed,
   Calendar, ClipboardList, Globe, Lightbulb, MoreHorizontal,
-  ChevronLeft,
+  ChevronLeft, Share2, Link as LinkIcon,
 } from 'lucide-react';
 import type { TripTheme } from '../lib/TripContext';
+import { useReadOnly } from '../lib/ReadOnlyContext';
 
 interface SidebarProps {
   activeSection: string;
@@ -41,7 +42,43 @@ const bottomSheetItems = [
   { id: 'otros-viajes', label: 'Otros Viajes',  icon: Globe },
 ];
 
+function SidebarShareButton() {
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('readonly', 'true');
+    navigator.clipboard.writeText(url.toString()).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    });
+  };
+
+  return (
+    <button
+      onClick={handleShare}
+      className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all border"
+      style={{
+        background: copied ? '#ecfdf5' : 'rgba(14,116,144,0.06)',
+        color: copied ? '#065f46' : '#475569',
+        borderColor: copied ? '#6ee7b7' : 'rgba(0,0,0,0.07)',
+      }}
+    >
+      {copied ? (
+        <>
+          <LinkIcon size={13} /> Enlace copiado
+        </>
+      ) : (
+        <>
+          <Share2 size={13} /> Compartir guía
+        </>
+      )}
+    </button>
+  );
+}
+
 export default function Sidebar({ activeSection, onSectionChange, onBackToDashboard, tripTitle, tripSubtitle, theme }: SidebarProps) {
+  const isReadOnly = useReadOnly();
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const accent = theme?.sidebarActive || '#c94060';
@@ -142,7 +179,8 @@ export default function Sidebar({ activeSection, onSectionChange, onBackToDashbo
           })}
         </nav>
 
-        <div className="p-3 border-t" style={{ borderColor: 'rgba(0,0,0,0.06)' }}>
+        <div className="p-3 border-t space-y-2" style={{ borderColor: 'rgba(0,0,0,0.06)' }}>
+          {!isReadOnly && <SidebarShareButton />}
           <div
             className="p-3 rounded-xl border"
             style={{

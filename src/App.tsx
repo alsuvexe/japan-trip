@@ -13,6 +13,8 @@ import GenericTripView from './components/GenericTripView';
 import { TodoProvider } from './lib/TodoContext';
 import { AdminProvider } from './lib/AdminContext';
 import { TripProvider, useTrips } from './lib/TripContext';
+import { ReadOnlyProvider, useReadOnly } from './lib/ReadOnlyContext';
+import { BookOpen } from 'lucide-react';
 
 function JapanTripView() {
   const { activeTrip, setActiveTrip } = useTrips();
@@ -118,6 +120,17 @@ function GenericTripDetailView() {
   );
 }
 
+function ReadOnlyBanner() {
+  const isReadOnly = useReadOnly();
+  if (!isReadOnly) return null;
+  return (
+    <div className="fixed top-0 left-0 right-0 z-[9998] flex items-center justify-center gap-2 py-2 px-4 text-sm font-medium text-slate-700 bg-amber-50/95 border-b border-amber-200 backdrop-blur-sm">
+      <BookOpen size={15} className="text-amber-600" />
+      <span>Modo lectura - Guía de viaje</span>
+    </div>
+  );
+}
+
 function AppRouter() {
   const { activeTrip } = useTrips();
 
@@ -134,13 +147,16 @@ function AppRouter() {
 
 function App() {
   return (
-    <AdminProvider>
-      <TripProvider>
-        <TodoProvider>
-          <AppRouter />
-        </TodoProvider>
-      </TripProvider>
-    </AdminProvider>
+    <ReadOnlyProvider>
+      <AdminProvider>
+        <TripProvider>
+          <TodoProvider>
+            <ReadOnlyBanner />
+            <AppRouter />
+          </TodoProvider>
+        </TripProvider>
+      </AdminProvider>
+    </ReadOnlyProvider>
   );
 }
 

@@ -12,6 +12,7 @@ import Modal from '../Modal';
 import MarkdownRenderer from '../MarkdownRenderer';
 import { useImagePaste } from '../../hooks/useImagePaste';
 import { exportDayToPdf } from '../../lib/exportDayPdf';
+import { useReadOnly } from '../../lib/ReadOnlyContext';
 import type { CityConfig } from './JapanMap';
 
 interface DayActivity {
@@ -275,6 +276,7 @@ function ActivityCard({ act, cityStyle, onEdit, onDelete }: {
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const isReadOnly = useReadOnly();
   const [expanded, setExpanded] = useState(false);
   const cat = getCatStyle(act.category);
   const CatIcon = cat.icon;
@@ -330,22 +332,24 @@ function ActivityCard({ act, cityStyle, onEdit, onDelete }: {
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0 pt-0.5" onClick={(e) => e.stopPropagation()}>
-          <button
-            onClick={onEdit}
-            className="w-9 h-9 flex items-center justify-center hover:text-cyan-700 hover:bg-cyan-50 border border-transparent hover:border-cyan-200 rounded-xl transition-all"
-            style={{ color: '#64748b' }}
-          >
-            <Pencil size={14} />
-          </button>
-          <button
-            onClick={onDelete}
-            className="w-9 h-9 flex items-center justify-center hover:text-red-500 hover:bg-red-50 border border-transparent hover:border-red-200 rounded-xl transition-all"
-            style={{ color: '#64748b' }}
-          >
-            <Trash2 size={14} />
-          </button>
-        </div>
+        {!isReadOnly && (
+          <div className="flex items-center gap-1.5 shrink-0 pt-0.5" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={onEdit}
+              className="w-9 h-9 flex items-center justify-center hover:text-cyan-700 hover:bg-cyan-50 border border-transparent hover:border-cyan-200 rounded-xl transition-all"
+              style={{ color: '#64748b' }}
+            >
+              <Pencil size={14} />
+            </button>
+            <button
+              onClick={onDelete}
+              className="w-9 h-9 flex items-center justify-center hover:text-red-500 hover:bg-red-50 border border-transparent hover:border-red-200 rounded-xl transition-all"
+              style={{ color: '#64748b' }}
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        )}
       </div>
 
       <AnimatePresence>
@@ -545,6 +549,7 @@ interface DayFullViewProps {
 }
 
 export default function DayFullView({ day, cityStyle, onBack, days, onNavigateDay }: DayFullViewProps) {
+  const isReadOnly = useReadOnly();
   const sortedDays = [...days].sort((a, b) => a.day_number - b.day_number);
   const currentDayIndex = sortedDays.findIndex((d) => d.id === day.id);
   const isFirstDay = currentDayIndex <= 0;
@@ -704,14 +709,16 @@ export default function DayFullView({ day, cityStyle, onBack, days, onNavigateDa
               </div>
             </div>
 
-            <button
-              onClick={() => setIsAddOpen(true)}
-              className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg text-white hover:bg-slate-800 transition-all shrink-0"
-              style={{ background: '#0f172a' }}
-            >
-              <PlusCircle size={15} />
-              <span className="hidden sm:inline">Nueva actividad</span>
-            </button>
+            {!isReadOnly && (
+              <button
+                onClick={() => setIsAddOpen(true)}
+                className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg text-white hover:bg-slate-800 transition-all shrink-0"
+                style={{ background: '#0f172a' }}
+              >
+                <PlusCircle size={15} />
+                <span className="hidden sm:inline">Nueva actividad</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -728,14 +735,21 @@ export default function DayFullView({ day, cityStyle, onBack, days, onNavigateDa
           )}
 
           {activities.length === 0 ? (
-            <button
-              onClick={() => setIsAddOpen(true)}
-              className="w-full py-16 border-2 border-dashed border-slate-300 rounded-2xl hover:border-cyan-400 hover:bg-white/30 transition-all flex flex-col items-center gap-3"
-              style={{ color: '#94a3b8' }}
-            >
-              <PlusCircle size={28} className="opacity-40" />
-              <span className="text-sm">Sin actividades — pulsa para añadir la primera</span>
-            </button>
+            isReadOnly ? (
+              <div className="w-full py-16 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center gap-3" style={{ color: '#94a3b8' }}>
+                <PlusCircle size={28} className="opacity-40" />
+                <span className="text-sm">Sin actividades planificadas para este día</span>
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsAddOpen(true)}
+                className="w-full py-16 border-2 border-dashed border-slate-300 rounded-2xl hover:border-cyan-400 hover:bg-white/30 transition-all flex flex-col items-center gap-3"
+                style={{ color: '#94a3b8' }}
+              >
+                <PlusCircle size={28} className="opacity-40" />
+                <span className="text-sm">Sin actividades — pulsa para añadir la primera</span>
+              </button>
+            )
           ) : (
             <div className="space-y-3">
               {activities.map((act) => {

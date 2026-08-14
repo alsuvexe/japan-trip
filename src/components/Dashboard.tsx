@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, Calendar, ArrowRight, Plane, Archive, Plus, Globe, Camera } from 'lucide-react';
+import { MapPin, Calendar, ArrowRight, Plane, Archive, Plus, Globe, Camera, Share2, Link as LinkIcon } from 'lucide-react';
 import { useTrips, type Trip } from '../lib/TripContext';
+import { useReadOnly } from '../lib/ReadOnlyContext';
 import NewTripModal from './NewTripModal';
 
 const DESTINATION_GRADIENTS: Record<string, string> = {
@@ -65,6 +66,7 @@ const JAPAN_COVER = 'https://images.pexels.com/photos/20817306/pexels-photo-2081
 
 function TripCard({ trip, onClick }: { trip: Trip; onClick: () => void }) {
   const { updateTrip } = useTrips();
+  const isReadOnly = useReadOnly();
   const days = dayCount(trip.startDate, trip.endDate);
   const [imgError, setImgError] = useState(false);
   const [editingCover, setEditingCover] = useState(false);
@@ -112,13 +114,15 @@ function TripCard({ trip, onClick }: { trip: Trip; onClick: () => void }) {
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
         <div className="absolute top-3 right-3 flex items-center gap-2">
-          <button
-            onClick={(e) => { e.stopPropagation(); setEditingCover(true); }}
-            className="w-7 h-7 rounded-lg flex items-center justify-center bg-black/30 hover:bg-black/50 text-white/80 hover:text-white transition-all opacity-0 group-hover:opacity-100"
-            title="Cambiar portada"
-          >
-            <Camera size={14} />
-          </button>
+          {!isReadOnly && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setEditingCover(true); }}
+              className="w-7 h-7 rounded-lg flex items-center justify-center bg-black/30 hover:bg-black/50 text-white/80 hover:text-white transition-all opacity-0 group-hover:opacity-100"
+              title="Cambiar portada"
+            >
+              <Camera size={14} />
+            </button>
+          )}
           {statusBadge(trip.status)}
         </div>
         <div className="absolute bottom-4 left-4 right-4">
@@ -159,7 +163,7 @@ function TripCard({ trip, onClick }: { trip: Trip; onClick: () => void }) {
         </div>
       </div>
 
-      {editingCover && (
+      {!isReadOnly && editingCover && (
         <div
           className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl"
           style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
@@ -198,8 +202,44 @@ function TripCard({ trip, onClick }: { trip: Trip; onClick: () => void }) {
   );
 }
 
+function ShareButton() {
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('readonly', 'true');
+    navigator.clipboard.writeText(url.toString()).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    });
+  };
+
+  return (
+    <button
+      onClick={handleShare}
+      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all border"
+      style={{
+        background: copied ? '#ecfdf5' : '#f8fafc',
+        color: copied ? '#065f46' : '#475569',
+        borderColor: copied ? '#6ee7b7' : '#e2e8f0',
+      }}
+    >
+      {copied ? (
+        <>
+          <LinkIcon size={15} /> Enlace copiado
+        </>
+      ) : (
+        <>
+          <Share2 size={15} /> Compartir
+        </>
+      )}
+    </button>
+  );
+}
+
 export default function Dashboard() {
   const { trips, setActiveTrip } = useTrips();
+  const isReadOnly = useReadOnly();
   const [modalOpen, setModalOpen] = useState(false);
 
   const upcoming = trips.filter((t) => t.status === 'upcoming' || t.status === 'in_progress');
@@ -233,12 +273,17 @@ export default function Dashboard() {
                 Mis Viajes
               </h1>
             </div>
-            <button
-              onClick={() => setModalOpen(true)}
-              className="inline-flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl shadow-sm text-sm font-semibold hover:bg-slate-800 transition-colors"
-            >
-              <Plus size={16} /> Nuevo Viaje
-            </button>
+            <div className="flex items-center gap-2">
+              {!isReadOnly && <ShareButton />}
+              {!isReadOnly && (
+                <button
+                  onClick={() => setModalOpen(true)}
+                  className="inline-flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl shadow-sm text-sm font-semibold hover:bg-slate-800 transition-colors"
+                >
+                  <Plus size={16} /> Nuevo Viaje
+                </button>
+              )}
+            </div>
           </div>
           <p className="text-sm font-medium mt-2" style={{ color: '#64748b' }}>
             Gestiona tus destinos, itinerarios y reservas en un solo lugar.
@@ -295,7 +340,7 @@ export default function Dashboard() {
         )}
       </div>
 
-      <NewTripModal open={modalOpen} onClose={() => setModalOpen(false)} />
+      {!isReadOnly && <NewTripModal open={modalOpen} onClose={() => setModalOpen(false)} />}
     </div>
   );
 }

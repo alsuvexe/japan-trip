@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import Modal from '../Modal';
 import MarkdownRenderer from '../MarkdownRenderer';
 import { useImagePaste } from '../../hooks/useImagePaste';
+import { useReadOnly } from '../../lib/ReadOnlyContext';
 
 interface DayActivity {
   id: string;
@@ -86,6 +87,7 @@ function DescriptionTextarea({ value, onChange, rows = 8, placeholder = 'Descrip
 }
 
 export default function DayActivities({ dayId }: { dayId: string }) {
+  const isReadOnly = useReadOnly();
   const [activities, setActivities] = useState<DayActivity[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -161,9 +163,11 @@ export default function DayActivities({ dayId }: { dayId: string }) {
     <div className="mt-3">
       <div className="flex items-center justify-between mb-2">
         <span className="text-[10px] font-bold uppercase tracking-wider">Actividades</span>
-        <button onClick={() => setIsAddOpen(true)} className="flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 transition-colors py-1 px-2 rounded-lg hover:bg-cyan-500/10">
-          <PlusCircle size={12} /><span>Añadir</span>
-        </button>
+        {!isReadOnly && (
+          <button onClick={() => setIsAddOpen(true)} className="flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 transition-colors py-1 px-2 rounded-lg hover:bg-cyan-500/10">
+            <PlusCircle size={12} /><span>Añadir</span>
+          </button>
+        )}
       </div>
       <div className="space-y-1.5">
         {activities.map((act) => {
@@ -250,8 +254,12 @@ export default function DayActivities({ dayId }: { dayId: string }) {
                   )}
                 </div>
                 <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                  <button onClick={() => { setEditingId(act.id); setEditForm({ ...act }); }} className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-all" style={{ color: '#64748b' }}><Pencil size={12} /></button>
-                  <button onClick={() => setDeleteId(act.id)} className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:text-red-500 hover:bg-red-50 rounded-lg transition-all" style={{ color: '#64748b' }}><Trash2 size={12} /></button>
+                  {!isReadOnly && (
+                    <>
+                      <button onClick={() => { setEditingId(act.id); setEditForm({ ...act }); }} className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-all" style={{ color: '#64748b' }}><Pencil size={12} /></button>
+                      <button onClick={() => setDeleteId(act.id)} className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:text-red-500 hover:bg-red-50 rounded-lg transition-all" style={{ color: '#64748b' }}><Trash2 size={12} /></button>
+                    </>
+                  )}
                   {isExpanded ? <ChevronUp size={13} style={{ color: '#64748b' }} /> : <ChevronRight size={13} style={{ color: '#64748b' }} />}
                 </div>
               </div>
@@ -303,7 +311,7 @@ export default function DayActivities({ dayId }: { dayId: string }) {
             </div>
           );
         })}
-        {activities.length === 0 && (
+        {activities.length === 0 && !isReadOnly && (
           <button onClick={() => setIsAddOpen(true)} className="w-full py-3 border border-dashed rounded-xl text-xs font-medium transition-all" style={{ borderColor: 'rgba(14,116,144,0.30)', color: '#334155', background: 'rgba(255,255,255,0.45)' }}>
             Sin actividades — pulsa para añadir
           </button>
