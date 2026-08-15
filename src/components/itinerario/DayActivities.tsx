@@ -169,7 +169,7 @@ export default function DayActivities({ dayId }: { dayId: string }) {
           </button>
         )}
       </div>
-      <div className="space-y-2.5 px-3 py-4 w-full">
+      <div className="space-y-2.5 w-full">
         {activities.map((act) => {
           const cat = getCatStyle(act.category);
           const CatIcon = cat.icon;

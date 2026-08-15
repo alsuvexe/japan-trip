@@ -800,7 +800,7 @@ export default function DayFullView({ day, cityStyle, onBack, days, allDays, onN
       </div>
 
       <div className="flex-1 overflow-y-auto relative z-10 bg-[#f8fafc]">
-        <div className="max-w-5xl mx-auto px-2 sm:px-8 py-4 sm:py-8 space-y-4 sm:space-y-6">
+        <div className="max-w-5xl mx-auto px-3 sm:px-8 py-4 sm:py-8 space-y-4 sm:space-y-6">
           {day.description && (
             <div
               className="p-5 rounded-2xl border border-slate-200"
