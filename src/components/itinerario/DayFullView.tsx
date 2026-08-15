@@ -640,19 +640,12 @@ export default function DayFullView({ day, cityStyle, onBack, days, allDays, onN
 
   return (
     <motion.div
-      className="fixed inset-0 z-[60] flex flex-col overflow-hidden"
-      style={{
-        backgroundImage: "url('/image.png')",
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }}
+      className="fixed inset-0 z-[60] flex flex-col overflow-hidden bg-[#f8fafc]"
       initial={{ opacity: 0, x: 40 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 40 }}
       transition={{ duration: 0.32, ease: [0.4, 0, 0.2, 1] }}
     >
-      {/* Opaque overlay — blocks city view beneath while preserving soft aesthetic */}
-      <div className="absolute inset-0 pointer-events-none bg-[#f8fafc]/90" />
       {/* Header — sticky, ultra-compact on mobile */}
       <div
         className={`shrink-0 border-b ${cityStyle.borderColor} relative z-20 sticky top-0`}
