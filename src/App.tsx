@@ -33,7 +33,7 @@ function JapanTripView() {
       case 'resumen':
         return <Resumen onSectionChange={handleSectionChange} />;
       case 'itinerario':
-        return <Itinerario initialCityId={initialCity} initialDayDate={initialDayDate} />;
+        return <Itinerario initialCityId={initialCity} initialDayDate={initialDayDate} onNavigateHome={() => setActiveSection('resumen')} />;
       case 'calendario':
         return <CalendarioReservas />;
       case 'hoteles':

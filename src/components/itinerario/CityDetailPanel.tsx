@@ -10,7 +10,7 @@ import DayFullView from './DayFullView';
 import { WeatherWidgetFull } from './WeatherWidget';
 import { useAdmin } from '../../lib/AdminContext';
 import { useReadOnly } from '../../lib/ReadOnlyContext';
-import type { CityConfig } from './JapanMap';
+import { CITIES, type CityConfig } from './JapanMap';
 
 interface ItineraryDay {
   id: string;
@@ -110,11 +110,14 @@ interface CityDetailPanelProps {
   city: CityConfig | null;
   onClose: () => void;
   initialDayDate?: string;
+  onNavigateHome?: () => void;
 }
 
-export default function CityDetailPanel({ city, onClose, initialDayDate }: CityDetailPanelProps) {
+export default function CityDetailPanel({ city, onClose, initialDayDate, onNavigateHome }: CityDetailPanelProps) {
   const [days, setDays] = useState<ItineraryDay[]>([]);
+  const [allDays, setAllDays] = useState<ItineraryDay[]>([]);
   const [selectedDay, setSelectedDay] = useState<ItineraryDay | null>(null);
+  const [activeCityStyle, setActiveCityStyle] = useState<CityConfig | null>(city);
   const { isAdmin } = useAdmin();
   const isReadOnly = useReadOnly();
   const canEdit = isAdmin && !isReadOnly;
@@ -127,6 +130,7 @@ export default function CityDetailPanel({ city, onClose, initialDayDate }: CityD
   useEffect(() => {
     if (!city) return;
     setSelectedDay(null);
+    setActiveCityStyle(city);
     setNewDay((prev) => ({ ...prev, city: city.id }));
     supabase.from('itinerary_days').select('*').eq('city', city.id).order('day_number').then(({ data }) => {
       if (data) {
@@ -136,6 +140,9 @@ export default function CityDetailPanel({ city, onClose, initialDayDate }: CityD
           if (match) setSelectedDay(match);
         }
       }
+    });
+    supabase.from('itinerary_days').select('*').order('day_number').then(({ data }) => {
+      if (data) setAllDays(data);
     });
   }, [city, initialDayDate]);
 
@@ -328,14 +335,21 @@ export default function CityDetailPanel({ city, onClose, initialDayDate }: CityD
           </div>
 
           <AnimatePresence>
-            {selectedDay && (
+            {selectedDay && activeCityStyle && (
               <DayFullView
                 key={selectedDay.id}
                 day={selectedDay}
-                cityStyle={city}
-                onBack={() => setSelectedDay(null)}
+                cityStyle={activeCityStyle}
+                onBack={() => { setSelectedDay(null); setActiveCityStyle(city); }}
                 days={days}
-                onNavigateDay={(d) => setSelectedDay(d)}
+                allDays={allDays}
+                onNavigateDay={(d) => {
+                  setSelectedDay(d);
+                  const newCity = CITIES.find((c) => c.id === d.city);
+                  if (newCity) setActiveCityStyle(newCity);
+                }}
+                onNavigateHome={onNavigateHome}
+                onNavigateCity={() => setSelectedDay(null)}
               />
             )}
           </AnimatePresence>

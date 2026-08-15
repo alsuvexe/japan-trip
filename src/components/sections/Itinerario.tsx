@@ -8,6 +8,7 @@ import { exportFullItineraryToPdf } from '../../lib/exportDayPdf';
 interface ItinerarioProps {
   initialCityId?: string;
   initialDayDate?: string;
+  onNavigateHome?: () => void;
 }
 
 interface CityWeather {
@@ -33,7 +34,7 @@ const WEATHER_FALLBACK: Record<string, CityWeather> = {
   Tokio: { temp: 10, icon: '☀️', label: 'Despejado' },
 };
 
-export default function Itinerario({ initialCityId, initialDayDate }: ItinerarioProps) {
+export default function Itinerario({ initialCityId, initialDayDate, onNavigateHome }: ItinerarioProps) {
   const [selectedCity, setSelectedCity] = useState<CityConfig | null>(
     () => (initialCityId ? CITIES.find((c) => c.id === initialCityId) ?? null : null),
   );
@@ -243,7 +244,7 @@ export default function Itinerario({ initialCityId, initialDayDate }: Itinerario
         </div>
       </div>
 
-      <CityDetailPanel city={selectedCity} onClose={() => setSelectedCity(null)} initialDayDate={initialDayDate} />
+      <CityDetailPanel city={selectedCity} onClose={() => setSelectedCity(null)} initialDayDate={initialDayDate} onNavigateHome={onNavigateHome} />
     </div>
   );
 }

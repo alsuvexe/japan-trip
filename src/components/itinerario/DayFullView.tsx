@@ -4,7 +4,7 @@ import {
   ArrowLeft, PlusCircle, Pencil, Trash2, Save, X,
   Clock, AlertCircle, Paperclip, FileText, ExternalLink,
   Eye, EyeOff, Image as ImageIcon, Link, MapPin, Calendar,
-  FileDown, Navigation, ChevronLeft, ChevronRight,
+  FileDown, Navigation, ChevronLeft, ChevronRight, Home,
 } from 'lucide-react';
 import { TrainFront, Footprints, Utensils, Camera, Landmark, Sparkles } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -13,7 +13,7 @@ import MarkdownRenderer from '../MarkdownRenderer';
 import { useImagePaste } from '../../hooks/useImagePaste';
 import { exportDayToPdf } from '../../lib/exportDayPdf';
 import { useReadOnly } from '../../lib/ReadOnlyContext';
-import type { CityConfig } from './JapanMap';
+import { CITIES, type CityConfig } from './JapanMap';
 
 interface DayActivity {
   id: string;
@@ -545,15 +545,18 @@ interface DayFullViewProps {
   cityStyle: CityConfig;
   onBack: () => void;
   days: ItineraryDay[];
+  allDays?: ItineraryDay[];
   onNavigateDay: (day: ItineraryDay) => void;
+  onNavigateHome?: () => void;
+  onNavigateCity?: () => void;
 }
 
-export default function DayFullView({ day, cityStyle, onBack, days, onNavigateDay }: DayFullViewProps) {
+export default function DayFullView({ day, cityStyle, onBack, days, allDays, onNavigateDay, onNavigateHome, onNavigateCity }: DayFullViewProps) {
   const isReadOnly = useReadOnly();
-  const sortedDays = [...days].sort((a, b) => a.day_number - b.day_number);
-  const currentDayIndex = sortedDays.findIndex((d) => d.id === day.id);
-  const isFirstDay = currentDayIndex <= 0;
-  const isLastDay = currentDayIndex >= sortedDays.length - 1;
+  const globalDays = (allDays && allDays.length > 0 ? allDays : days).sort((a, b) => a.day_number - b.day_number);
+  const currentGlobalIndex = globalDays.findIndex((d) => d.id === day.id);
+  const isFirstDay = currentGlobalIndex <= 0;
+  const isLastDay = currentGlobalIndex >= globalDays.length - 1;
   const [activities, setActivities] = useState<DayActivity[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -662,6 +665,23 @@ export default function DayFullView({ day, cityStyle, onBack, days, onNavigateDa
         }}
       >
         <div className="max-w-5xl mx-auto px-5 sm:px-8 py-4">
+          {/* Breadcrumbs */}
+          <div className="flex items-center gap-1.5 mb-3 text-xs font-medium" style={{ color: '#64748b' }}>
+            {onNavigateHome && (
+              <>
+                <button onClick={onNavigateHome} className="flex items-center gap-1 hover:text-cyan-700 transition-colors px-1.5 py-1 rounded-md hover:bg-slate-100">
+                  <Home size={12} /> Resumen
+                </button>
+                <span style={{ color: '#cbd5e1' }}>/</span>
+              </>
+            )}
+            <button onClick={onNavigateCity || onBack} className={`hover:opacity-80 transition-opacity px-1.5 py-1 rounded-md hover:bg-slate-100 ${cityStyle.textColor}`}>
+              {cityStyle.name}
+            </button>
+            <span style={{ color: '#cbd5e1' }}>/</span>
+            <span className="truncate" style={{ color: '#0f172a' }}>{day.title}</span>
+          </div>
+
           <div className="flex items-center gap-4">
             <button
               onClick={onBack}
@@ -690,7 +710,7 @@ export default function DayFullView({ day, cityStyle, onBack, days, onNavigateDa
                 </div>
                 <div className="flex items-center gap-2 mt-2.5">
                   <button
-                    onClick={() => onNavigateDay(sortedDays[currentDayIndex - 1])}
+                    onClick={() => onNavigateDay(globalDays[currentGlobalIndex - 1])}
                     disabled={isFirstDay}
                     className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100"
                     style={{ color: '#475569', borderColor: 'rgba(203,213,225,0.7)', background: 'rgba(255,255,255,0.6)' }}
@@ -698,7 +718,7 @@ export default function DayFullView({ day, cityStyle, onBack, days, onNavigateDa
                     <ChevronLeft size={13} /> Día anterior
                   </button>
                   <button
-                    onClick={() => onNavigateDay(sortedDays[currentDayIndex + 1])}
+                    onClick={() => onNavigateDay(globalDays[currentGlobalIndex + 1])}
                     disabled={isLastDay}
                     className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100"
                     style={{ color: '#475569', borderColor: 'rgba(203,213,225,0.7)', background: 'rgba(255,255,255,0.6)' }}
