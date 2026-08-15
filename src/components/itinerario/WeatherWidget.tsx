@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Cloud, Sun, CloudRain, CloudSnow, CloudLightning, Wind, Droplets } from 'lucide-react';
+import { Cloud, Sun, CloudRain, CloudSnow, CloudLightning, Wind, Droplets, Thermometer } from 'lucide-react';
 
 export interface WeatherData {
   temp: number;
@@ -127,11 +127,11 @@ export function WeatherWidgetFull({ lat, lon, cityName, borderColor, bgColor, do
 
   if (loading) {
     return (
-      <div className={`flex items-center gap-3 px-3 py-2 rounded-xl border ${borderColor} ${bgColor} animate-pulse`}>
-        <div className="w-8 h-8 bg-white/[0.04] rounded-lg" />
-        <div className="space-y-1">
-          <div className="w-16 h-3 bg-white/[0.04] rounded" />
-          <div className="w-10 h-2 bg-white/[0.04] rounded" />
+      <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-200/60 bg-white/80 backdrop-blur-md animate-pulse">
+        <div className="w-10 h-10 bg-slate-100 rounded-lg" />
+        <div className="space-y-1.5 flex-1">
+          <div className="w-20 h-4 bg-slate-100 rounded" />
+          <div className="w-14 h-3 bg-slate-100 rounded" />
         </div>
       </div>
     );
@@ -141,27 +141,40 @@ export function WeatherWidgetFull({ lat, lon, cityName, borderColor, bgColor, do
 
   return (
     <div
-      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border ${borderColor}`}
-      style={{ background: 'rgba(6,8,18,0.6)' }}
+      className="flex items-center gap-4 px-4 py-3 rounded-xl border border-sky-100 bg-sky-50/80 backdrop-blur-md"
+      style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
     >
-      <div className={`w-9 h-9 rounded-xl ${bgColor} border ${borderColor} flex items-center justify-center text-xl shrink-0`}>
+      <div className={`w-11 h-11 rounded-xl ${bgColor} border ${borderColor} flex items-center justify-center text-2xl shrink-0`}>
         {weather.icon}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-xl font-bold text-white leading-none">{weather.temp}°</span>
-          <span className="text-xs text-gray-500">sens. {weather.feelsLike}°</span>
+        <div className="flex items-baseline gap-2">
+          <span className="text-2xl font-black leading-none" style={{ color: '#0f172a' }}>{weather.temp}°</span>
+          <span className="text-sm font-medium" style={{ color: '#334155' }}>{weather.description}</span>
         </div>
-        <p className="text-[11px] text-gray-400 mt-0.5 leading-tight">{weather.description} · {cityName}</p>
+        <p className="text-xs font-medium mt-1" style={{ color: '#64748b' }}>Clima actual en {cityName}</p>
       </div>
-      <div className="shrink-0 flex flex-col items-end gap-1">
-        <div className="flex items-center gap-1 text-[10px] text-gray-500">
-          <Droplets size={9} className="text-blue-400" />
-          <span>{weather.humidity}%</span>
+      <div className="shrink-0 flex items-center gap-3 sm:gap-4">
+        <div className="flex items-center gap-1.5">
+          <Thermometer size={14} style={{ color: dotColor }} />
+          <div className="flex flex-col">
+            <span className="text-sm font-semibold leading-tight" style={{ color: '#1e293b' }}>{weather.feelsLike}°</span>
+            <span className="text-[10px] font-medium leading-tight" style={{ color: '#64748b' }}>Sensación</span>
+          </div>
         </div>
-        <div className="flex items-center gap-1 text-[10px] text-gray-500">
-          <Wind size={9} style={{ color: dotColor }} />
-          <span>{weather.windSpeed} km/h</span>
+        <div className="flex items-center gap-1.5">
+          <Droplets size={14} className="text-sky-500" />
+          <div className="flex flex-col">
+            <span className="text-sm font-semibold leading-tight" style={{ color: '#1e293b' }}>{weather.humidity}%</span>
+            <span className="text-[10px] font-medium leading-tight" style={{ color: '#64748b' }}>Humedad</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Wind size={14} style={{ color: dotColor }} />
+          <div className="flex flex-col">
+            <span className="text-sm font-semibold leading-tight" style={{ color: '#1e293b' }}>{weather.windSpeed} km/h</span>
+            <span className="text-[10px] font-medium leading-tight" style={{ color: '#64748b' }}>Viento</span>
+          </div>
         </div>
       </div>
     </div>
