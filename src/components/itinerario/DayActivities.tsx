@@ -169,7 +169,7 @@ export default function DayActivities({ dayId }: { dayId: string }) {
           </button>
         )}
       </div>
-      <div className="space-y-1.5">
+      <div className="space-y-2 px-0">
         {activities.map((act) => {
           const cat = getCatStyle(act.category);
           const CatIcon = cat.icon;
@@ -232,53 +232,43 @@ export default function DayActivities({ dayId }: { dayId: string }) {
           );
 
           return (
-            <div key={act.id} className={`rounded-2xl sm:rounded-xl border transition-all ${isExpanded ? 'border-white/60 bg-white/70' : 'border-white/40 bg-white/55 hover:bg-white/70'}`} style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-              <div className="p-3 sm:px-3 sm:py-3 cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : act.id)}>
-                {/* Row 1: icon, time, category pill, actions */}
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <div className={`w-8 h-8 sm:w-auto sm:h-auto sm:px-2 sm:py-1 flex items-center justify-center gap-1 rounded-lg ${cat.bg} ${cat.border} border shrink-0`}>
-                    <CatIcon className={cat.color} size={12} />
-                    <span className={`text-[10px] font-bold ${cat.color} hidden sm:block`}>{cat.label}</span>
-                  </div>
-                  {act.time && <span className="text-xs font-semibold font-mono shrink-0 flex items-center gap-0.5" style={{ color: '#334155' }}><Clock size={10} />{act.time}</span>}
-                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md sm:hidden shrink-0 ${cat.bg} ${cat.color}`}>{cat.label}</span>
-                  {act.has_pending_tasks && (
-                    <div className="group relative shrink-0">
-                      <AlertCircle size={13} className="text-orange-500 animate-pulse cursor-help" />
-                      <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-30 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                        <div className="bg-white border border-orange-300 text-orange-700 text-xs font-medium px-3 py-2 rounded-xl whitespace-nowrap shadow-xl">
-                          Faltan gestiones por completar (ej: reserva, entradas, etc.)
-                        </div>
-                        <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-white" />
-                      </div>
+            <div key={act.id} className={`flex flex-col w-full p-3.5 rounded-xl border transition-all ${isExpanded ? 'border-white/60 bg-white/70' : 'border-white/40 bg-white/55 hover:bg-white/70'}`} style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+              <div className="cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : act.id)}>
+                {/* Row 1: Header — icon, time, category pill | actions */}
+                <div className="flex items-center justify-between w-full mb-2">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-7 h-7 flex items-center justify-center rounded-lg ${cat.bg} ${cat.border} border shrink-0`}>
+                      <CatIcon className={cat.color} size={12} />
                     </div>
-                  )}
-                  <div className="flex-1" />
+                    {act.time && <span className="text-xs font-semibold font-mono shrink-0 flex items-center gap-0.5" style={{ color: '#334155' }}><Clock size={10} />{act.time}</span>}
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md shrink-0 ${cat.bg} ${cat.color}`}>{cat.label}</span>
+                    {act.has_pending_tasks && <AlertCircle size={13} className="text-orange-500 animate-pulse shrink-0" />}
+                  </div>
                   <div className="flex items-center gap-0 shrink-0" onClick={(e) => e.stopPropagation()}>
                     {!isReadOnly && (
                       <>
-                        <button onClick={() => { setEditingId(act.id); setEditForm({ ...act }); }} className="w-8 h-8 sm:min-w-[44px] sm:min-h-[44px] flex items-center justify-center hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-all" style={{ color: '#64748b' }}><Pencil size={12} /></button>
-                        <button onClick={() => setDeleteId(act.id)} className="w-8 h-8 sm:min-w-[44px] sm:min-h-[44px] flex items-center justify-center hover:text-red-500 hover:bg-red-50 rounded-lg transition-all" style={{ color: '#64748b' }}><Trash2 size={12} /></button>
+                        <button onClick={() => { setEditingId(act.id); setEditForm({ ...act }); }} className="w-7 h-7 flex items-center justify-center hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-all" style={{ color: '#94a3b8' }}><Pencil size={12} /></button>
+                        <button onClick={() => setDeleteId(act.id)} className="w-7 h-7 flex items-center justify-center hover:text-red-500 hover:bg-red-50 rounded-lg transition-all" style={{ color: '#94a3b8' }}><Trash2 size={12} /></button>
                       </>
                     )}
-                    {isExpanded ? <ChevronUp size={13} style={{ color: '#64748b' }} /> : <ChevronRight size={13} style={{ color: '#64748b' }} />}
+                    {isExpanded ? <ChevronUp size={14} style={{ color: '#64748b' }} /> : <ChevronRight size={14} style={{ color: '#64748b' }} />}
                   </div>
                 </div>
                 {/* Row 2: Title — full width */}
-                <p className="text-base sm:text-sm font-semibold mt-1.5 w-full" style={{ color: '#0f172a' }}>
+                <p className="w-full text-base font-bold mb-1" style={{ color: '#0f172a' }}>
                   {act.title}
                 </p>
-                {/* Row 3: Description preview on mobile (collapsed) */}
+                {/* Row 3: Description preview — full width, up to 3 lines */}
                 {!isExpanded && act.description && (
-                  <p className="text-xs mt-1 line-clamp-3 sm:line-clamp-1" style={{ color: '#475569' }}>
+                  <p className="w-full text-xs line-clamp-3" style={{ color: '#475569' }}>
                     {act.description.replace(/[#*_\[\]()>`~!|-]/g, '').slice(0, 200)}
                   </p>
                 )}
               </div>
               {isExpanded && (act.description || act.attachment_url || (act.category === 'restaurant' && (act.restaurant_notes || act.restaurant_service || act.restaurant_food_type || act.restaurant_avg_price))) && (
-                <div className="px-3 pb-3 border-t border-black/[0.06]">
+                <div className="pt-3 mt-3 border-t border-black/[0.06]">
                   {act.category === 'restaurant' ? (
-                    <div className="pl-9 pt-2 space-y-2">
+                    <div className="space-y-2">
                       {act.restaurant_notes && <div><MarkdownRenderer content={act.restaurant_notes} /></div>}
                       {act.description && (
                         <a
@@ -305,10 +295,10 @@ export default function DayActivities({ dayId }: { dayId: string }) {
                       </div>
                     </div>
                   ) : (
-                    act.description && <div className="pl-9 pt-2"><MarkdownRenderer content={act.description} /></div>
+                    act.description && <div><MarkdownRenderer content={act.description} /></div>
                   )}
                   {act.attachment_url && (
-                    <div className="pl-9 pt-2">
+                    <div className="pt-2">
                       {/\.(jpg|jpeg|png|gif|webp)$/i.test(act.attachment_url) ? (
                         <img src={act.attachment_url} alt={act.attachment_name || 'Adjunto'} className="rounded-xl max-h-48 object-cover border border-slate-200 shadow-sm" />
                       ) : (
