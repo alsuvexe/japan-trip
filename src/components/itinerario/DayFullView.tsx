@@ -654,17 +654,18 @@ export default function DayFullView({ day, cityStyle, onBack, days, allDays, onN
       {/* Light tinted overlay */}
       <div className="absolute inset-0 pointer-events-none" style={{ background: 'rgba(255,255,255,0.12)' }} />
 
-      {/* Header */}
+      {/* Header — sticky, ultra-compact on mobile */}
       <div
-        className={`shrink-0 border-b ${cityStyle.borderColor} relative z-10`}
+        className={`shrink-0 border-b ${cityStyle.borderColor} relative z-20 sticky top-0`}
         style={{
-          background: 'rgba(255,255,255,0.88)',
+          background: 'rgba(255,255,255,0.92)',
           backdropFilter: 'blur(40px)',
           WebkitBackdropFilter: 'blur(40px)',
-          boxShadow: '0 1px 0 rgba(255,255,255,0.9) inset, 0 2px 16px rgba(0,0,0,0.09)',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
         }}
       >
-        <div className="max-w-5xl mx-auto px-5 sm:px-8 py-4">
+        {/* Desktop header */}
+        <div className="hidden sm:block max-w-5xl mx-auto px-8 py-4">
           {/* Breadcrumbs */}
           <div className="flex items-center gap-1.5 mb-3 text-xs font-medium" style={{ color: '#64748b' }}>
             {onNavigateHome && (
@@ -688,8 +689,7 @@ export default function DayFullView({ day, cityStyle, onBack, days, allDays, onN
               className={`flex items-center gap-2.5 text-sm font-semibold px-4 py-2.5 rounded-xl border ${cityStyle.borderColor} ${cityStyle.bgColor} ${cityStyle.textColor} hover:opacity-80 transition-all shrink-0`}
             >
               <ArrowLeft size={15} />
-              <span className="hidden sm:inline">Volver a {cityStyle.name}</span>
-              <span className="sm:hidden">Volver</span>
+              <span>Volver a {cityStyle.name}</span>
             </button>
 
             <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -699,7 +699,7 @@ export default function DayFullView({ day, cityStyle, onBack, days, allDays, onN
               <div className="min-w-0">
                 <div className="flex items-center gap-2.5 flex-wrap">
                   <span className={`text-xl font-black tracking-tight ${cityStyle.textColor}`}>{cityStyle.name}</span>
-                  <span className="font-light text-lg hidden sm:inline" style={{ color: '#94a3b8' }}>/</span>
+                  <span className="font-light text-lg" style={{ color: '#94a3b8' }}>/</span>
                   <span className="text-lg font-bold truncate" style={{ color: '#0f172a' }}>{day.title}</span>
                 </div>
                 <div className="flex items-center gap-2 mt-0.5">
@@ -736,15 +736,79 @@ export default function DayFullView({ day, cityStyle, onBack, days, allDays, onN
                 style={{ background: '#0f172a' }}
               >
                 <PlusCircle size={15} />
-                <span className="hidden sm:inline">Nueva actividad</span>
+                <span>Nueva actividad</span>
               </button>
             )}
+          </div>
+        </div>
+
+        {/* Mobile header — ultra-compact */}
+        <div className="sm:hidden px-3 py-2">
+          <div className="flex items-center gap-2 min-h-[44px]">
+            {/* Left: back breadcrumb */}
+            <button
+              onClick={onNavigateCity || onBack}
+              className={`flex items-center gap-1 text-sm font-semibold ${cityStyle.textColor} shrink-0 min-w-0 max-w-[120px]`}
+            >
+              <ArrowLeft size={14} className="shrink-0" />
+              <span className="truncate">{cityStyle.name}</span>
+            </button>
+
+            {/* Center: day info */}
+            <div className="flex-1 min-w-0 text-center">
+              <span className="text-sm font-bold truncate block" style={{ color: '#0f172a' }}>
+                Día {day.day_number} · {new Date(day.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+              </span>
+            </div>
+
+            {/* Right: nav arrows + add button */}
+            <div className="flex items-center gap-0.5 shrink-0">
+              <button
+                onClick={() => onNavigateDay(globalDays[currentGlobalIndex - 1])}
+                disabled={isFirstDay}
+                className="w-8 h-8 flex items-center justify-center rounded-lg border transition-all disabled:opacity-25 disabled:cursor-not-allowed hover:bg-slate-100"
+                style={{ color: '#475569', borderColor: 'rgba(203,213,225,0.7)', background: 'rgba(255,255,255,0.6)' }}
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <button
+                onClick={() => onNavigateDay(globalDays[currentGlobalIndex + 1])}
+                disabled={isLastDay}
+                className="w-8 h-8 flex items-center justify-center rounded-lg border transition-all disabled:opacity-25 disabled:cursor-not-allowed hover:bg-slate-100"
+                style={{ color: '#475569', borderColor: 'rgba(203,213,225,0.7)', background: 'rgba(255,255,255,0.6)' }}
+              >
+                <ChevronRight size={16} />
+              </button>
+              {!isReadOnly && (
+                <button
+                  onClick={() => setIsAddOpen(true)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-white ml-1"
+                  style={{ background: '#0f172a' }}
+                >
+                  <PlusCircle size={15} />
+                </button>
+              )}
+            </div>
+          </div>
+          {/* Mobile breadcrumb row */}
+          <div className="flex items-center gap-1 text-[11px] font-medium mt-0.5 overflow-hidden" style={{ color: '#94a3b8' }}>
+            {onNavigateHome && (
+              <>
+                <button onClick={onNavigateHome} className="hover:text-cyan-700 transition-colors shrink-0">
+                  <Home size={10} />
+                </button>
+                <span>/</span>
+              </>
+            )}
+            <button onClick={onNavigateCity || onBack} className={`shrink-0 ${cityStyle.textColor} opacity-70`}>{cityStyle.name}</button>
+            <span>/</span>
+            <span className="truncate" style={{ color: '#475569' }}>{day.title}</span>
           </div>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto relative z-10">
-        <div className="max-w-5xl mx-auto px-5 sm:px-8 py-8 space-y-6">
+        <div className="max-w-5xl mx-auto px-2 sm:px-8 py-4 sm:py-8 space-y-4 sm:space-y-6">
           {day.description && (
             <div
               className="p-5 rounded-2xl border border-slate-200"
