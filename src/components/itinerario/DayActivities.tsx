@@ -169,7 +169,7 @@ export default function DayActivities({ dayId }: { dayId: string }) {
           </button>
         )}
       </div>
-      <div className="space-y-2 px-0">
+      <div className="space-y-2.5 px-3 py-4 w-full">
         {activities.map((act) => {
           const cat = getCatStyle(act.category);
           const CatIcon = cat.icon;
@@ -232,7 +232,7 @@ export default function DayActivities({ dayId }: { dayId: string }) {
           );
 
           return (
-            <div key={act.id} className={`flex flex-col w-full p-3.5 rounded-xl border transition-all ${isExpanded ? 'border-white/60 bg-white/70' : 'border-white/40 bg-white/55 hover:bg-white/70'}`} style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+            <div key={act.id} className={`flex flex-col w-full p-3.5 rounded-2xl border transition-all bg-white shadow-sm ${isExpanded ? 'border-slate-200' : 'border-slate-100 hover:border-slate-200 hover:shadow-md'}`}>
               <div className="cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : act.id)}>
                 {/* Row 1: Header — icon, time, category pill | actions */}
                 <div className="flex items-center justify-between w-full mb-2">
