@@ -286,16 +286,13 @@ function ActivityCard({ act, cityStyle, onEdit, onDelete }: {
   return (
     <motion.div
       layout
-      className="rounded-2xl border border-slate-200 transition-all overflow-hidden"
+      className="w-full rounded-2xl border border-slate-100/80 bg-white shadow-sm transition-all overflow-hidden"
       style={{
-        background: expanded ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.75)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        boxShadow: expanded ? '0 8px 28px rgba(0,0,0,0.12)' : '0 2px 12px rgba(0,0,0,0.07)',
+        boxShadow: expanded ? '0 8px 28px rgba(0,0,0,0.10)' : '0 1px 4px rgba(0,0,0,0.06)',
       }}
     >
       <div
-        className={`flex items-start gap-4 px-5 py-4 ${hasDetail ? 'cursor-pointer' : ''}`}
+        className={`flex items-start gap-3 p-4 ${hasDetail ? 'cursor-pointer' : ''}`}
         onClick={() => hasDetail && setExpanded(!expanded)}
       >
         <div className={`p-2.5 rounded-xl ${cat.bg} border ${cat.border} shrink-0 mt-0.5`}>
@@ -313,8 +310,8 @@ function ActivityCard({ act, cityStyle, onEdit, onDelete }: {
               {getCatStyle(act.category).label}
             </span>
           </div>
-          <div className="flex items-center gap-2.5 mt-2">
-            <p className="text-lg font-bold leading-snug" style={{ color: '#0f172a' }}>{act.title}</p>
+          <div className="flex items-center gap-2.5 mt-2 w-full">
+            <p className="flex-1 text-base sm:text-lg font-bold leading-snug line-clamp-2" style={{ color: '#0f172a' }}>{act.title}</p>
             {act.has_pending_tasks && (
               <div className="group relative shrink-0">
                 <AlertCircle size={18} className="text-orange-500 animate-pulse cursor-help" />
@@ -361,7 +358,7 @@ function ActivityCard({ act, cityStyle, onEdit, onDelete }: {
             transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
             className="overflow-hidden"
           >
-            <div className="px-5 pb-5 pt-3 border-t border-slate-100 space-y-4">
+            <div className="px-4 pb-4 pt-3 border-t border-slate-100 space-y-4">
               {isRestaurant ? (
                 <div className="space-y-3">
                   {act.restaurant_notes && (
@@ -808,7 +805,7 @@ export default function DayFullView({ day, cityStyle, onBack, days, allDays, onN
       </div>
 
       <div className="flex-1 overflow-y-auto relative z-10">
-        <div className="max-w-5xl mx-auto px-5 sm:px-8 py-8 space-y-6">
+        <div className="max-w-5xl mx-auto px-3.5 sm:px-8 py-8 space-y-6">
           {day.description && (
             <div
               className="p-5 rounded-2xl border border-slate-200"

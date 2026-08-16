@@ -232,15 +232,15 @@ export default function DayActivities({ dayId }: { dayId: string }) {
           );
 
           return (
-            <div key={act.id} className={`rounded-xl border transition-all ${isExpanded ? 'border-white/60 bg-white/70' : 'border-white/40 bg-white/55 hover:bg-white/70'}`} style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-              <div className="flex items-center gap-3 px-3 py-3 cursor-pointer min-h-[48px]" onClick={() => setExpandedId(isExpanded ? null : act.id)}>
+            <div key={act.id} className={`w-full rounded-2xl border border-slate-100/80 bg-white shadow-sm transition-all`}>
+              <div className="flex items-center gap-3 p-4 cursor-pointer min-h-[48px]" onClick={() => setExpandedId(isExpanded ? null : act.id)}>
                 <div className={`flex items-center gap-1 px-2 py-1 rounded-lg ${cat.bg} ${cat.border} border shrink-0`}>
                   <CatIcon className={cat.color} size={11} />
                   <span className={`text-[10px] font-bold ${cat.color} hidden sm:block`}>{cat.label}</span>
                 </div>
-                <div className="flex-1 min-w-0 flex items-center gap-2">
+                <div className="flex-1 min-w-0 flex items-center gap-2 w-full">
                   {act.time && <span className="text-[11px] font-semibold font-mono shrink-0 flex items-center gap-0.5" style={{ color: '#334155' }}><Clock size={9} />{act.time}</span>}
-                  <span className="text-sm font-bold truncate" style={{ color: '#0f172a' }}>{act.title}</span>
+                  <span className="text-sm font-bold flex-1 line-clamp-2 leading-snug" style={{ color: '#0f172a' }}>{act.title}</span>
                   {act.has_pending_tasks && (
                     <div className="group relative shrink-0">
                       <AlertCircle size={13} className="text-orange-500 animate-pulse cursor-help" />
