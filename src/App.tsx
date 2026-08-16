@@ -73,8 +73,8 @@ function JapanTripView() {
           tripSubtitle={activeTrip?.destination}
           theme={theme}
         />
-        <main className="flex-1 lg:ml-64 min-h-screen">
-          <div className="container mx-auto px-4 pt-16 pb-24 lg:pt-10 lg:pb-10 lg:px-8 max-w-4xl">
+        <main className="flex-1 lg:ml-64 min-h-screen overflow-x-hidden">
+          <div className="container mx-auto px-4 pt-16 pb-24 lg:pt-10 lg:pb-10 lg:px-8 max-w-4xl w-full">
             {renderSection()}
           </div>
         </main>
@@ -110,8 +110,8 @@ function GenericTripDetailView() {
           tripSubtitle={activeTrip?.destination}
           theme={theme}
         />
-        <main className="flex-1 lg:ml-64 min-h-screen">
-          <div className="container mx-auto px-4 pt-16 pb-24 lg:pt-10 lg:pb-10 lg:px-8 max-w-4xl">
+        <main className="flex-1 lg:ml-64 min-h-screen overflow-x-hidden">
+          <div className="container mx-auto px-4 pt-16 pb-24 lg:pt-10 lg:pb-10 lg:px-8 max-w-4xl w-full">
             <GenericTripView activeSection={activeSection} onSectionChange={setActiveSection} />
           </div>
         </main>

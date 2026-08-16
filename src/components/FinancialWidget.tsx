@@ -306,7 +306,7 @@ export default function FinancialWidget({ defaultFrom = 'EUR', defaultTo = 'JPY'
           <p className="text-sm mb-4" style={{ color: '#475569' }}>por 1 {fromCurrency.symbol} {fromCode} · últimos 12 meses</p>
 
           {/* Chart */}
-          <div className="h-28">
+          <div className="h-28 w-full max-w-full overflow-hidden">
             {chartLoading ? (
               <div className="flex items-center justify-center h-full">
                 <Loader2 size={20} className="text-cyan-600 animate-spin" />

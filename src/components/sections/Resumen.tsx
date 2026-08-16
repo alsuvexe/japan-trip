@@ -322,7 +322,7 @@ export default function Resumen({ onSectionChange }: ResumenProps) {
   void weatherData;
 
   return (
-    <div className="space-y-6 pb-8">
+    <div className="space-y-6 pb-8 w-full max-w-full overflow-x-hidden">
       {/* ── HERO BANNER ── */}
       <div
         className="relative rounded-3xl overflow-hidden"
@@ -468,15 +468,69 @@ export default function Resumen({ onSectionChange }: ResumenProps) {
       </div>
 
       {/* ── 3-COL STATUS GRID ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-3 w-full max-w-full">
+        {/* Next Step / Reservations fallback */}
+        <button
+          onClick={() => {
+            if (nextStep) {
+              onSectionChange?.('itinerario', nextStep.city, nextStep.date);
+            } else {
+              onSectionChange?.('calendario');
+            }
+          }}
+          className="group rounded-2xl p-3 flex flex-col justify-between text-left transition-all duration-200"
+          style={{ ...GLASS_CARD, minHeight: 100 }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.borderColor = nextStep ? 'rgba(14,116,144,0.40)' : 'rgba(190,24,93,0.40)';
+            (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.90)';
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.52)';
+            (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.75)';
+          }}
+        >
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center gap-1">
+              {nextStep ? (
+                <Compass size={11} style={{ color: '#0e7490' }} strokeWidth={1.75} />
+              ) : (
+                <CalendarCheck size={11} style={{ color: '#be185d' }} strokeWidth={1.75} />
+              )}
+              <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: '#64748b' }}>
+                Próximo paso
+              </span>
+            </div>
+            <ChevronRight size={10} style={{ color: '#a0aec0' }} className="group-hover:text-cyan-600 transition-colors" />
+          </div>
+          {nextStep ? (
+            <>
+              <p className="text-xs font-bold leading-tight line-clamp-2" style={{ color: '#0f172a' }}>
+                {nextStep.title}
+              </p>
+              <p className="text-[9px] font-medium mt-1" style={{ color: '#94a3b8' }}>
+                {nextStep.label}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-xs font-bold leading-tight" style={{ color: '#0f172a' }}>
+                Sin actividades
+              </p>
+              <p className="text-[9px] font-medium mt-1" style={{ color: '#94a3b8' }}>
+                Añade días al itinerario
+              </p>
+            </>
+          )}
+        </button>
+
         {/* Countdown */}
         <div
-          className="rounded-2xl p-4 flex flex-col justify-between"
-          style={{ ...GLASS_CARD, minHeight: 110 }}
+          className="rounded-2xl p-3 flex flex-col justify-between"
+          style={{ ...GLASS_CARD, minHeight: 100 }}
         >
-          <div className="flex items-center gap-1.5 mb-2">
-            <Timer size={13} style={{ color: '#0e7490' }} strokeWidth={1.75} />
-            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#64748b' }}>
+          <div className="flex items-center gap-1 mb-1.5">
+            <Timer size={11} style={{ color: '#0e7490' }} strokeWidth={1.75} />
+            <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: '#64748b' }}>
               Días para el viaje
             </span>
           </div>
@@ -485,7 +539,7 @@ export default function Resumen({ onSectionChange }: ResumenProps) {
               <p
                 className="font-black leading-none"
                 style={{
-                  fontSize: 'clamp(2rem, 8vw, 2.75rem)',
+                  fontSize: 'clamp(1.5rem, 6vw, 2.25rem)',
                   background: 'linear-gradient(135deg, #0e7490 0%, #be185d 100%)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
@@ -495,13 +549,13 @@ export default function Resumen({ onSectionChange }: ResumenProps) {
               >
                 {daysLeft === 0 ? '¡Ya!' : daysLeft}
               </p>
-              <p className="text-[10px] font-medium mt-1" style={{ color: '#94a3b8' }}>
+              <p className="text-[9px] font-medium mt-1" style={{ color: '#94a3b8' }}>
                 {daysLeft === 0 ? '¡Hoy comienza!' : daysLeft === 1 ? 'mañana despega' : 'días restantes'}
               </p>
             </>
           ) : (
             <div
-              className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin mt-2"
+              className="w-6 h-6 rounded-full border-2 border-t-transparent animate-spin mt-2"
               style={{ borderColor: 'rgba(14,116,144,0.20)', borderTopColor: '#0e7490' }}
             />
           )}
@@ -510,8 +564,8 @@ export default function Resumen({ onSectionChange }: ResumenProps) {
         {/* Tasks */}
         <button
           onClick={() => onSectionChange?.('todos')}
-          className="group rounded-2xl p-4 flex flex-col text-left transition-all duration-200"
-          style={{ ...GLASS_CARD, minHeight: 110 }}
+          className="group rounded-2xl p-3 flex flex-col text-left transition-all duration-200"
+          style={{ ...GLASS_CARD, minHeight: 100 }}
           onMouseEnter={(e) => {
             (e.currentTarget as HTMLElement).style.borderColor = 'rgba(14,116,144,0.40)';
             (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.90)';
@@ -521,34 +575,32 @@ export default function Resumen({ onSectionChange }: ResumenProps) {
             (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.75)';
           }}
         >
-          {/* Header */}
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5">
-              <CheckCircle2 size={13} style={{ color: '#0e7490' }} strokeWidth={1.75} />
-              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#64748b' }}>
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center gap-1">
+              <CheckCircle2 size={11} style={{ color: '#0e7490' }} strokeWidth={1.75} />
+              <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: '#64748b' }}>
                 Tareas pendientes
               </span>
             </div>
-            <ChevronRight size={11} style={{ color: '#a0aec0' }} className="group-hover:text-cyan-600 transition-colors" />
+            <ChevronRight size={10} style={{ color: '#a0aec0' }} className="group-hover:text-cyan-600 transition-colors" />
           </div>
 
-          {/* Number + global bar */}
-          <div className="flex items-end gap-2 mb-1">
+          <div className="flex items-end gap-1.5 mb-1">
             <p
               className="font-black leading-none"
               style={{
-                fontSize: 'clamp(1.6rem, 6vw, 2.2rem)',
+                fontSize: 'clamp(1.3rem, 5vw, 1.8rem)',
                 color: overallProgress === 100 ? '#059669' : '#0e7490',
                 letterSpacing: '-0.04em',
               }}
             >
               {pending}
             </p>
-            <span className="text-[10px] font-semibold pb-1" style={{ color: '#94a3b8' }}>
+            <span className="text-[9px] font-semibold pb-0.5" style={{ color: '#94a3b8' }}>
               sin terminar
             </span>
           </div>
-          <div className="relative w-full h-1.5 rounded-full overflow-hidden mb-1" style={{ background: 'rgba(0,0,0,0.07)' }}>
+          <div className="relative w-full h-1 rounded-full overflow-hidden mb-1" style={{ background: 'rgba(0,0,0,0.07)' }}>
             <div
               className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
               style={{
@@ -559,86 +611,8 @@ export default function Resumen({ onSectionChange }: ResumenProps) {
               }}
             />
           </div>
-          <p className="text-[9px] font-medium mb-2.5" style={{ color: '#94a3b8' }}>
-            {overallProgress}% completado · media grupo
-          </p>
-
-          {/* Divider */}
-          <div className="w-full h-px mb-2.5" style={{ background: 'rgba(0,0,0,0.06)' }} />
-
-          {/* Per-person breakdown */}
-          <div className="space-y-1.5">
-            {PEOPLE.map((person) => {
-              const meta = PERSON_META[person];
-              const pct = calcPersonPct(todos, person);
-              return (
-                <div key={person} className="flex items-center gap-2">
-                  <span
-                    className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black text-white shrink-0"
-                    style={{ background: meta.solid }}
-                  >
-                    {meta.initial}
-                  </span>
-                  <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.07)' }}>
-                    <div
-                      className="h-full rounded-full transition-all duration-700"
-                      style={{ width: `${pct}%`, background: meta.bar }}
-                    />
-                  </div>
-                  <span className="text-[9px] font-bold w-6 text-right shrink-0" style={{ color: meta.solid }}>
-                    {pct}%
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </button>
-
-        {/* Next Step / Reservations fallback */}
-        <button
-          onClick={() => {
-            if (nextStep) {
-              onSectionChange?.('itinerario', nextStep.city, nextStep.date);
-            } else {
-              onSectionChange?.('calendario');
-            }
-          }}
-          className="col-span-2 sm:col-span-1 group rounded-2xl p-4 flex flex-col justify-between text-left transition-all duration-200"
-          style={{ ...GLASS_CARD, minHeight: 110 }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLElement).style.borderColor = nextStep ? 'rgba(14,116,144,0.40)' : 'rgba(190,24,93,0.40)';
-            (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.90)';
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.52)';
-            (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.75)';
-          }}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5">
-              {nextStep ? (
-                <Compass size={13} style={{ color: '#0e7490' }} strokeWidth={1.75} />
-              ) : (
-                <CalendarCheck size={13} style={{ color: '#be185d' }} strokeWidth={1.75} />
-              )}
-              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#64748b' }}>
-                {nextStep ? 'Próximo paso' : 'Mis Reservas'}
-              </span>
-            </div>
-            <ChevronRight size={11} style={{ color: '#a0aec0' }} className={`transition-colors ${nextStep ? 'group-hover:text-cyan-600' : 'group-hover:text-pink-600'}`} />
-          </div>
-          <p
-            className="font-black leading-snug"
-            style={{
-              fontSize: 'clamp(1rem, 4vw, 1.4rem)',
-              color: nextStep ? '#0e7490' : '#be185d',
-              letterSpacing: '-0.03em',
-            }}
-          >
-            {nextStep ? nextStep.title : 'Vuelos'}
-          </p>
-          <p className="text-[10px] font-medium mt-1" style={{ color: '#94a3b8' }}>
-            {nextStep ? nextStep.label : 'hoteles · traslados'}
+          <p className="text-[8px] font-medium" style={{ color: '#94a3b8' }}>
+            {overallProgress}% completado
           </p>
         </button>
       </div>
