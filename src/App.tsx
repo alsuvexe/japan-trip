@@ -6,7 +6,7 @@ import Hoteles from './components/sections/Hoteles';
 import Restaurantes from './components/sections/Restaurantes';
 import CalendarioReservas from './components/sections/CalendarioReservas';
 import TodoList from './components/sections/TodoList';
-import OtrosViajes from './components/sections/OtrosViajes';
+import TripAlbum from './components/sections/TripAlbum';
 import SugerenciasFamiliares from './components/sections/SugerenciasFamiliares';
 import Dashboard from './components/Dashboard';
 import GenericTripView from './components/GenericTripView';
@@ -43,7 +43,7 @@ function JapanTripView() {
       case 'todos':
         return <TodoList />;
       case 'otros-viajes':
-        return <OtrosViajes />;
+        return <TripAlbum />;
       case 'sugerencias':
         return <SugerenciasFamiliares />;
       default:

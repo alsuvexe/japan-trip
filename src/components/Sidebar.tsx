@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   LayoutDashboard, MapPin, Hotel, UtensilsCrossed,
-  Calendar, ClipboardList, Globe, Lightbulb, MoreHorizontal,
+  Calendar, ClipboardList, Camera, Lightbulb, MoreHorizontal,
   ChevronLeft, Share2, Link as LinkIcon,
 } from 'lucide-react';
 import type { TripTheme } from '../lib/TripContext';
@@ -25,7 +25,7 @@ const menuItems = [
   { id: 'todos',         label: 'Tareas',         icon: ClipboardList },
   { id: 'calendario',    label: 'Calendario',     icon: Calendar },
   { id: 'sugerencias',   label: 'Sugerencias',    icon: Lightbulb },
-  { id: 'otros-viajes',  label: 'Otros Viajes',   icon: Globe },
+  { id: 'otros-viajes',  label: 'Álbum del viaje', icon: Camera },
 ];
 
 const bottomNavPrimary = [
@@ -39,7 +39,7 @@ const bottomSheetItems = [
   { id: 'todos',        label: 'Tareas',        icon: ClipboardList },
   { id: 'calendario',   label: 'Calendario',    icon: Calendar },
   { id: 'sugerencias',  label: 'Sugerencias',   icon: Lightbulb },
-  { id: 'otros-viajes', label: 'Otros Viajes',  icon: Globe },
+  { id: 'otros-viajes', label: 'Álbum del viaje', icon: Camera },
 ];
 
 function SidebarShareButton() {
