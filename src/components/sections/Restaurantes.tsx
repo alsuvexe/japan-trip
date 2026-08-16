@@ -34,6 +34,26 @@ const GLASS_CARD: React.CSSProperties = {
   boxShadow: '0 4px 20px rgba(0,0,0,0.10)',
 };
 
+function parsePriceRange(priceStr: string): { min: number; max: number } | null {
+  if (!priceStr) return null;
+  const cleaned = priceStr.replace(/[¥￥]/g, '').replace(/\./g, '').replace(/,/g, '');
+  const rangeMatch = cleaned.match(/(\d+)\s*[-–~]\s*(\d+)/);
+  if (rangeMatch) return { min: parseInt(rangeMatch[1], 10), max: parseInt(rangeMatch[2], 10) };
+  const single = cleaned.match(/(\d+)/);
+  if (single) { const v = parseInt(single[1], 10); return { min: v, max: v }; }
+  return null;
+}
+
+function formatYen(n: number): string {
+  if (n >= 10000) return `¥${Math.round(n / 1000)}k`;
+  return `¥${n.toLocaleString('es-ES')}`;
+}
+
+function formatDayDate(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }).replace('.', '');
+}
+
 const SERVICE_STYLES: Record<string, { bg: string; text: string; border: string }> = {
   Desayuno: { bg: 'bg-amber-100', text: 'text-amber-800', border: 'border-amber-200' },
   Almuerzo: { bg: 'bg-orange-100', text: 'text-orange-800', border: 'border-orange-200' },
@@ -161,24 +181,39 @@ export default function Restaurantes({ onSectionChange }: RestaurantesSectionPro
       </div>
 
       {/* Stats Row */}
-      {items.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="rounded-xl p-3 text-center" style={GLASS_CARD}>
-            <p className="text-xl font-black" style={{ color: '#ea580c' }}>{totalMeals}</p>
-            <p className="text-[11px] font-semibold mt-0.5" style={{ color: '#475569' }}>Comidas</p>
-          </div>
-          <div className="rounded-xl p-3 text-center" style={GLASS_CARD}>
-            <p className="text-xl font-black" style={{ color: '#0e7490' }}>{uniqueCities.length}</p>
-            <p className="text-[11px] font-semibold mt-0.5" style={{ color: '#475569' }}>Ciudades</p>
-          </div>
-          {Object.entries(serviceCount).slice(0, 2).map(([service, count]) => (
-            <div key={service} className="rounded-xl p-3 text-center" style={GLASS_CARD}>
-              <p className="text-xl font-black" style={{ color: '#be185d' }}>{count}</p>
-              <p className="text-[11px] font-semibold mt-0.5" style={{ color: '#475569' }}>{service}</p>
+      {items.length > 0 && (() => {
+        const budgetRanges = items.map((i) => parsePriceRange(i.restaurant_avg_price)).filter(Boolean) as { min: number; max: number }[];
+        const totalMin = budgetRanges.reduce((s, r) => s + r.min, 0);
+        const totalMax = budgetRanges.reduce((s, r) => s + r.max, 0);
+        return (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="rounded-xl p-3 text-center" style={GLASS_CARD}>
+              <p className="text-xl font-black" style={{ color: '#ea580c' }}>{totalMeals}</p>
+              <p className="text-[11px] font-semibold mt-0.5" style={{ color: '#475569' }}>Comidas</p>
             </div>
-          ))}
-        </div>
-      )}
+            <div className="rounded-xl p-3 text-center" style={GLASS_CARD}>
+              <p className="text-xl font-black" style={{ color: '#0e7490' }}>{uniqueCities.length}</p>
+              <p className="text-[11px] font-semibold mt-0.5" style={{ color: '#475569' }}>Ciudades</p>
+            </div>
+            {Object.entries(serviceCount).slice(0, 1).map(([service, count]) => (
+              <div key={service} className="rounded-xl p-3 text-center" style={GLASS_CARD}>
+                <p className="text-xl font-black" style={{ color: '#be185d' }}>{count}</p>
+                <p className="text-[11px] font-semibold mt-0.5" style={{ color: '#475569' }}>{service}</p>
+              </div>
+            ))}
+            <div className="rounded-xl p-3 text-center" style={GLASS_CARD}>
+              <p className="text-base font-black leading-tight" style={{ color: '#065f46' }}>
+                {budgetRanges.length > 0
+                  ? totalMin === totalMax
+                    ? formatYen(totalMin)
+                    : `${formatYen(totalMin)} - ${formatYen(totalMax)}`
+                  : '—'}
+              </p>
+              <p className="text-[11px] font-semibold mt-0.5" style={{ color: '#475569' }}>Gasto Estimado</p>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Table */}
       {loading ? (
@@ -197,11 +232,11 @@ export default function Restaurantes({ onSectionChange }: RestaurantesSectionPro
         <div className="rounded-2xl overflow-hidden" style={GLASS_CARD}>
           {/* Table Header */}
           <div className="hidden sm:grid grid-cols-12 gap-2 px-4 py-3 border-b border-slate-200/60">
-            <div className="col-span-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#64748b' }}>Ciudad</span>
-            </div>
             <div className="col-span-1">
               <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#64748b' }}>Día</span>
+            </div>
+            <div className="col-span-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#64748b' }}>Ciudad</span>
             </div>
             <div className="col-span-2">
               <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#64748b' }}>Servicio</span>
@@ -231,9 +266,9 @@ export default function Restaurantes({ onSectionChange }: RestaurantesSectionPro
                   <div className="sm:hidden space-y-1.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100" style={{ color: '#334155' }}>{formatDayDate(item.day_date)}</span>
                         <span className="w-2 h-2 rounded-full shrink-0" style={{ background: cityColor }} />
                         <span className="text-xs font-bold" style={{ color: cityColor }}>{item.day_city}</span>
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-100" style={{ color: '#64748b' }}>Día {item.day_number}</span>
                         <ServiceBadge service={item.restaurant_service} />
                       </div>
                       <ChevronRight size={14} style={{ color: '#94a3b8' }} className="group-hover:text-orange-500 transition-colors" />
@@ -250,12 +285,12 @@ export default function Restaurantes({ onSectionChange }: RestaurantesSectionPro
                   </div>
 
                   {/* Desktop layout */}
+                  <div className="hidden sm:flex col-span-1 items-center">
+                    <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-md bg-slate-100 whitespace-nowrap" style={{ color: '#334155' }}>{formatDayDate(item.day_date)}</span>
+                  </div>
                   <div className="hidden sm:flex col-span-2 items-center gap-2">
                     <span className="w-2 h-2 rounded-full shrink-0" style={{ background: cityColor }} />
                     <span className="text-xs font-bold truncate" style={{ color: cityColor }}>{item.day_city}</span>
-                  </div>
-                  <div className="hidden sm:flex col-span-1 items-center">
-                    <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-slate-100" style={{ color: '#334155' }}>{item.day_number}</span>
                   </div>
                   <div className="hidden sm:flex col-span-2 items-center">
                     <ServiceBadge service={item.restaurant_service} />
