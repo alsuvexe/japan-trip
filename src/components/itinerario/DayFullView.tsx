@@ -292,60 +292,60 @@ function ActivityCard({ act, cityStyle, onEdit, onDelete }: {
       }}
     >
       <div
-        className={`flex items-start gap-3 p-4 ${hasDetail ? 'cursor-pointer' : ''}`}
+        className={`p-4 ${hasDetail ? 'cursor-pointer' : ''}`}
         onClick={() => hasDetail && setExpanded(!expanded)}
       >
-        <div className={`p-2.5 rounded-xl ${cat.bg} border ${cat.border} shrink-0 mt-0.5`}>
-          <CatIcon className={cat.color} size={18} />
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 flex-wrap">
+        {/* Row 1: Icon + time + badge ... action buttons */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2.5">
+            <div className={`p-2 rounded-xl ${cat.bg} border ${cat.border} shrink-0`}>
+              <CatIcon className={cat.color} size={16} />
+            </div>
             {act.time && (
               <span className="flex items-center gap-1.5 text-xs font-mono px-2 py-0.5 rounded-lg shrink-0" style={{ color: '#475569', background: 'rgba(0,0,0,0.05)' }}>
                 <Clock size={11} />{act.time}
               </span>
             )}
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded-lg ${cat.bg} ${cat.color} border ${cat.border} shrink-0`}>
-              {getCatStyle(act.category).label}
+            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-lg ${cat.bg} ${cat.color} border ${cat.border} shrink-0`}>
+              {cat.label}
             </span>
-          </div>
-          <div className="flex items-center gap-2.5 mt-2 w-full">
-            <p className="flex-1 text-base sm:text-lg font-bold leading-snug line-clamp-2" style={{ color: '#0f172a' }}>{act.title}</p>
             {act.has_pending_tasks && (
               <div className="group relative shrink-0">
-                <AlertCircle size={18} className="text-orange-500 animate-pulse cursor-help" />
+                <AlertCircle size={15} className="text-orange-500 animate-pulse cursor-help" />
                 <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-20 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                   <div className="bg-white border border-orange-300 text-orange-700 text-xs font-medium px-3 py-2 rounded-xl whitespace-nowrap shadow-xl">
-                    Faltan gestiones por completar (ej: reserva, entradas, etc.)
+                    Faltan gestiones por completar
                   </div>
-                  <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-white" />
                 </div>
               </div>
             )}
           </div>
-          {!expanded && (isRestaurant ? act.restaurant_notes : act.description) && (
-            <p className="text-sm mt-1 line-clamp-2 leading-relaxed" style={{ color: '#334155' }}>{(isRestaurant ? act.restaurant_notes || '' : act.description || '').replace(/!\[.*?\]\(.*?\)/g, '').replace(/[#*`[\]]/g, '').trim()}</p>
+          {!isReadOnly && (
+            <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+              <button
+                onClick={onEdit}
+                className="w-8 h-8 flex items-center justify-center hover:text-cyan-700 hover:bg-cyan-50 border border-transparent hover:border-cyan-200 rounded-xl transition-all"
+                style={{ color: '#64748b' }}
+              >
+                <Pencil size={13} />
+              </button>
+              <button
+                onClick={onDelete}
+                className="w-8 h-8 flex items-center justify-center hover:text-red-500 hover:bg-red-50 border border-transparent hover:border-red-200 rounded-xl transition-all"
+                style={{ color: '#64748b' }}
+              >
+                <Trash2 size={13} />
+              </button>
+            </div>
           )}
         </div>
 
-        {!isReadOnly && (
-          <div className="flex items-center gap-1.5 shrink-0 pt-0.5" onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={onEdit}
-              className="w-9 h-9 flex items-center justify-center hover:text-cyan-700 hover:bg-cyan-50 border border-transparent hover:border-cyan-200 rounded-xl transition-all"
-              style={{ color: '#64748b' }}
-            >
-              <Pencil size={14} />
-            </button>
-            <button
-              onClick={onDelete}
-              className="w-9 h-9 flex items-center justify-center hover:text-red-500 hover:bg-red-50 border border-transparent hover:border-red-200 rounded-xl transition-all"
-              style={{ color: '#64748b' }}
-            >
-              <Trash2 size={14} />
-            </button>
-          </div>
+        {/* Row 2: Title — full width */}
+        <p className="w-full text-[15px] sm:text-base font-semibold leading-snug" style={{ color: '#0f172a' }}>{act.title}</p>
+
+        {/* Row 3: Description preview — full width */}
+        {!expanded && (isRestaurant ? act.restaurant_notes : act.description) && (
+          <p className="w-full text-sm mt-1.5 line-clamp-2 leading-relaxed" style={{ color: '#334155' }}>{(isRestaurant ? act.restaurant_notes || '' : act.description || '').replace(/!\[.*?\]\(.*?\)/g, '').replace(/[#*`[\]]/g, '').trim()}</p>
         )}
       </div>
 

@@ -233,40 +233,34 @@ export default function DayActivities({ dayId }: { dayId: string }) {
 
           return (
             <div key={act.id} className={`w-full rounded-2xl border border-slate-100/80 bg-white shadow-sm transition-all`}>
-              <div className="flex items-center gap-3 p-4 cursor-pointer min-h-[48px]" onClick={() => setExpandedId(isExpanded ? null : act.id)}>
-                <div className={`flex items-center gap-1 px-2 py-1 rounded-lg ${cat.bg} ${cat.border} border shrink-0`}>
-                  <CatIcon className={cat.color} size={11} />
-                  <span className={`text-[10px] font-bold ${cat.color} hidden sm:block`}>{cat.label}</span>
-                </div>
-                <div className="flex-1 min-w-0 flex items-center gap-2 w-full">
-                  {act.time && <span className="text-[11px] font-semibold font-mono shrink-0 flex items-center gap-0.5" style={{ color: '#334155' }}><Clock size={9} />{act.time}</span>}
-                  <span className="text-sm font-bold flex-1 line-clamp-2 leading-snug" style={{ color: '#0f172a' }}>{act.title}</span>
-                  {act.has_pending_tasks && (
-                    <div className="group relative shrink-0">
-                      <AlertCircle size={13} className="text-orange-500 animate-pulse cursor-help" />
-                      <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-30 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                        <div className="bg-white border border-orange-300 text-orange-700 text-xs font-medium px-3 py-2 rounded-xl whitespace-nowrap shadow-xl">
-                          Faltan gestiones por completar (ej: reserva, entradas, etc.)
-                        </div>
-                        <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-white" />
-                      </div>
+              <div className="p-3.5 cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : act.id)}>
+                {/* Row 1: icon + time + badge + actions */}
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <div className={`flex items-center gap-1 px-2 py-1 rounded-lg ${cat.bg} ${cat.border} border shrink-0`}>
+                      <CatIcon className={cat.color} size={11} />
                     </div>
-                  )}
+                    {act.time && <span className="text-[11px] font-semibold font-mono shrink-0 flex items-center gap-0.5" style={{ color: '#334155' }}><Clock size={9} />{act.time}</span>}
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${cat.bg} ${cat.color} border ${cat.border} shrink-0`}>{cat.label}</span>
+                    {act.has_pending_tasks && <AlertCircle size={12} className="text-orange-500 animate-pulse shrink-0" />}
+                  </div>
+                  <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    {!isReadOnly && (
+                      <>
+                        <button onClick={() => { setEditingId(act.id); setEditForm({ ...act }); }} className="w-8 h-8 flex items-center justify-center hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-all" style={{ color: '#64748b' }}><Pencil size={12} /></button>
+                        <button onClick={() => setDeleteId(act.id)} className="w-8 h-8 flex items-center justify-center hover:text-red-500 hover:bg-red-50 rounded-lg transition-all" style={{ color: '#64748b' }}><Trash2 size={12} /></button>
+                      </>
+                    )}
+                    {isExpanded ? <ChevronUp size={13} style={{ color: '#64748b' }} /> : <ChevronRight size={13} style={{ color: '#64748b' }} />}
+                  </div>
                 </div>
-                <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                  {!isReadOnly && (
-                    <>
-                      <button onClick={() => { setEditingId(act.id); setEditForm({ ...act }); }} className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-all" style={{ color: '#64748b' }}><Pencil size={12} /></button>
-                      <button onClick={() => setDeleteId(act.id)} className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:text-red-500 hover:bg-red-50 rounded-lg transition-all" style={{ color: '#64748b' }}><Trash2 size={12} /></button>
-                    </>
-                  )}
-                  {isExpanded ? <ChevronUp size={13} style={{ color: '#64748b' }} /> : <ChevronRight size={13} style={{ color: '#64748b' }} />}
-                </div>
+                {/* Row 2: Title — full width */}
+                <p className="w-full text-[15px] font-semibold leading-snug" style={{ color: '#0f172a' }}>{act.title}</p>
               </div>
               {isExpanded && (act.description || act.attachment_url || (act.category === 'restaurant' && (act.restaurant_notes || act.restaurant_service || act.restaurant_food_type || act.restaurant_avg_price))) && (
-                <div className="px-3 pb-3 border-t border-black/[0.06]">
+                <div className="px-3.5 pb-3.5 border-t border-black/[0.06]">
                   {act.category === 'restaurant' ? (
-                    <div className="pl-9 pt-2 space-y-2">
+                    <div className="pt-2 space-y-2">
                       {act.restaurant_notes && <div><MarkdownRenderer content={act.restaurant_notes} /></div>}
                       {act.description && (
                         <a
@@ -293,10 +287,10 @@ export default function DayActivities({ dayId }: { dayId: string }) {
                       </div>
                     </div>
                   ) : (
-                    act.description && <div className="pl-9 pt-2"><MarkdownRenderer content={act.description} /></div>
+                    act.description && <div className="pt-2"><MarkdownRenderer content={act.description} /></div>
                   )}
                   {act.attachment_url && (
-                    <div className="pl-9 pt-2">
+                    <div className="pt-2">
                       {/\.(jpg|jpeg|png|gif|webp)$/i.test(act.attachment_url) ? (
                         <img src={act.attachment_url} alt={act.attachment_name || 'Adjunto'} className="rounded-xl max-h-48 object-cover border border-slate-200 shadow-sm" />
                       ) : (
