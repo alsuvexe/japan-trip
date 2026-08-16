@@ -474,7 +474,6 @@ function EditActivityForm({ act, onSave, onCancel }: {
                 <option value="Desayuno">Desayuno</option>
                 <option value="Almuerzo">Almuerzo</option>
                 <option value="Cena">Cena</option>
-                <option value="Cena opcional">Cena opcional</option>
                 <option value="Snack/Street Food">Snack/Street Food</option>
               </select>
             </div>
@@ -917,7 +916,6 @@ export default function DayFullView({ day, cityStyle, onBack, days, allDays, onN
                     <option value="Desayuno">Desayuno</option>
                     <option value="Almuerzo">Almuerzo</option>
                     <option value="Cena">Cena</option>
-                    <option value="Cena opcional">Cena opcional</option>
                     <option value="Snack/Street Food">Snack/Street Food</option>
                   </select>
                 </div>

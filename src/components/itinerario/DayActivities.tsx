@@ -194,7 +194,6 @@ export default function DayActivities({ dayId }: { dayId: string }) {
                       <option value="Desayuno">Desayuno</option>
                       <option value="Almuerzo">Almuerzo</option>
                       <option value="Cena">Cena</option>
-                      <option value="Cena opcional">Cena opcional</option>
                       <option value="Snack/Street Food">Snack/Street Food</option>
                     </select>
                     <input value={editForm.restaurant_name || ''} onChange={(e) => setEditForm({ ...editForm, restaurant_name: e.target.value })} placeholder="Restaurante" className="japan-input text-xs py-2" />
@@ -352,7 +351,6 @@ export default function DayActivities({ dayId }: { dayId: string }) {
                     <option value="Desayuno">Desayuno</option>
                     <option value="Almuerzo">Almuerzo</option>
                     <option value="Cena">Cena</option>
-                    <option value="Cena opcional">Cena opcional</option>
                     <option value="Snack/Street Food">Snack/Street Food</option>
                   </select>
                 </div>
