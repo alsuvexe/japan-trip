@@ -1,90 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Plane, TrainFront, Footprints, Utensils, Camera, Landmark, Sparkles, ChevronRight, ChevronUp, PlusCircle, Pencil, Trash2, Save, X, Clock, AlertCircle, Paperclip, FileText, ExternalLink, Eye, EyeOff, Image as ImageIcon, MapPin } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ChevronRight, ChevronUp, PlusCircle, Pencil, Trash2, Save, X, Clock, AlertCircle, Paperclip, FileText, ExternalLink, MapPin } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import Modal from '../Modal';
 import MarkdownRenderer from '../MarkdownRenderer';
-import { useImagePaste } from '../../hooks/useImagePaste';
 import { useReadOnly } from '../../lib/ReadOnlyContext';
+import ActivityModal, { type DayActivity, type ActivityFormData, ACTIVITY_CATEGORIES, getCatStyle, uploadActivityFile, DescriptionTextarea } from '../ActivityModal';
 
-interface DayActivity {
-  id: string;
-  day_id: string;
-  category: string;
-  time: string;
-  title: string;
-  description: string;
-  sort_order: number;
-  attachment_url?: string | null;
-  attachment_name?: string | null;
-  has_pending_tasks?: boolean;
-  restaurant_service?: string;
-  restaurant_name?: string;
-  restaurant_food_type?: string;
-  restaurant_avg_price?: string;
-  restaurant_notes?: string;
-}
 
-const ACTIVITY_CATEGORIES = [
-  { id: 'flight', label: 'Transporte', icon: TrainFront, color: 'text-white', bg: 'bg-sky-600', border: 'border-sky-700' },
-  { id: 'transport', label: 'Desplazamiento', icon: Footprints, color: 'text-white', bg: 'bg-blue-600', border: 'border-blue-700' },
-  { id: 'restaurant', label: 'Comida', icon: Utensils, color: 'text-white', bg: 'bg-orange-500', border: 'border-orange-600' },
-  { id: 'activity', label: 'Actividad', icon: Sparkles, color: 'text-white', bg: 'bg-emerald-600', border: 'border-emerald-700' },
-  { id: 'visit', label: 'Visita', icon: Camera, color: 'text-white', bg: 'bg-pink-600', border: 'border-pink-700' },
-  { id: 'landmark', label: 'Monumento', icon: Landmark, color: 'text-white', bg: 'bg-amber-500', border: 'border-amber-600' },
-];
-
-function getCatStyle(catId: string) {
-  return ACTIVITY_CATEGORIES.find((c) => c.id === catId) || ACTIVITY_CATEGORIES[3];
-}
-
-function DescriptionTextarea({ value, onChange, rows = 8, placeholder = 'Descripción...' }: {
-  value: string; onChange: (v: string) => void; rows?: number; placeholder?: string;
-}) {
-  const [preview, setPreview] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const insertAtCursor = useCallback((text: string) => {
-    const el = textareaRef.current;
-    if (!el) { onChange(value + text); return; }
-    const start = el.selectionStart;
-    const end = el.selectionEnd;
-    const next = value.slice(0, start) + (start > 0 && value[start - 1] !== '\n' ? '\n' : '') + text + '\n' + value.slice(end);
-    onChange(next);
-    setTimeout(() => {
-      const pos = start + (start > 0 && value[start - 1] !== '\n' ? 1 : 0) + text.length + 1;
-      el.setSelectionRange(pos, pos);
-      el.focus();
-    }, 0);
-  }, [value, onChange]);
-
-  const { handlePaste, status } = useImagePaste({ onInsert: insertAtCursor });
-
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] text-gray-600 font-medium uppercase tracking-wider flex items-center gap-1">
-            <ImageIcon size={10} /> Pega imágenes con Ctrl+V
-          </span>
-          {status === 'uploading' && <span className="text-[10px] text-cyan-400 animate-pulse">Subiendo...</span>}
-          {status === 'done' && <span className="text-[10px] text-green-400">Insertada</span>}
-          {status === 'error' && <span className="text-[10px] text-red-400">Error</span>}
-        </div>
-        <button type="button" onClick={() => setPreview(!preview)} className="flex items-center gap-1 text-[10px] text-gray-500 hover:text-cyan-400 transition-colors py-0.5 px-1.5 rounded hover:bg-cyan-500/10">
-          {preview ? <EyeOff size={10} /> : <Eye size={10} />}
-          {preview ? 'Editor' : 'Vista previa'}
-        </button>
-      </div>
-      {preview ? (
-        <div className="japan-input text-xs cursor-text overflow-auto" style={{ minHeight: `${rows * 24}px` }} onClick={() => setPreview(false)}>
-          {value ? <MarkdownRenderer content={value} /> : <span className="text-gray-600 italic">Sin contenido — pulsa para editar</span>}
-        </div>
-      ) : (
-        <textarea ref={textareaRef} value={value} onChange={(e) => onChange(e.target.value)} onPaste={handlePaste} rows={rows} className={`japan-input text-xs resize-y ${status === 'uploading' ? 'paste-uploading' : ''}`} style={{ minHeight: `${rows * 24}px` }} placeholder={placeholder} />
-      )}
-    </div>
-  );
-}
 
 export default function DayActivities({ dayId }: { dayId: string }) {
   const isReadOnly = useReadOnly();
@@ -94,11 +16,9 @@ export default function DayActivities({ dayId }: { dayId: string }) {
   const [editForm, setEditForm] = useState<Partial<DayActivity>>({});
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [form, setForm] = useState({ category: 'activity', time: '', title: '', description: '', has_pending_tasks: false, restaurant_service: '', restaurant_name: '', restaurant_food_type: '', restaurant_avg_price: '', restaurant_notes: '' });
-  const [attachFile, setAttachFile] = useState<File | null>(null);
+
   const [editAttachFile, setEditAttachFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const editFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -109,30 +29,18 @@ export default function DayActivities({ dayId }: { dayId: string }) {
       });
   }, [dayId]);
 
-  const uploadFile = async (file: File): Promise<{ url: string; name: string } | null> => {
-    const ext = file.name.split('.').pop();
-    const path = `activities/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const { error } = await supabase.storage.from('attachments').upload(path, file, { upsert: false });
-    if (error) return null;
-    const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path);
-    return { url: urlData.publicUrl, name: file.name };
-  };
-
-  const addActivity = async () => {
-    if (!form.title.trim()) return;
+  const handleAddActivity = async (formData: ActivityFormData, attachFile: File | null) => {
     setUploading(true);
     let attachment_url: string | null = null;
     let attachment_name: string | null = null;
     if (attachFile) {
-      const res = await uploadFile(attachFile);
+      const res = await uploadActivityFile(attachFile);
       if (res) { attachment_url = res.url; attachment_name = res.name; }
     }
-    const { data } = await supabase.from('day_activities').insert({ ...form, day_id: dayId, sort_order: activities.length, attachment_url, attachment_name }).select().maybeSingle();
+    const { data } = await supabase.from('day_activities').insert({ ...formData, day_id: dayId, sort_order: activities.length, attachment_url, attachment_name }).select().maybeSingle();
     setUploading(false);
     if (data) {
       setActivities((prev) => [...prev, data].sort((a, b) => (a.time || '').localeCompare(b.time || '')));
-      setForm({ category: 'activity', time: '', title: '', description: '', has_pending_tasks: false, restaurant_service: '', restaurant_name: '', restaurant_food_type: '', restaurant_avg_price: '', restaurant_notes: '' });
-      setAttachFile(null);
       setIsAddOpen(false);
     }
   };
@@ -142,7 +50,7 @@ export default function DayActivities({ dayId }: { dayId: string }) {
     setUploading(true);
     let updatedForm = { ...editForm };
     if (editAttachFile) {
-      const res = await uploadFile(editAttachFile);
+      const res = await uploadActivityFile(editAttachFile);
       if (res) updatedForm = { ...updatedForm, attachment_url: res.url, attachment_name: res.name };
     }
     await supabase.from('day_activities').update(updatedForm).eq('id', editingId);
@@ -311,118 +219,12 @@ export default function DayActivities({ dayId }: { dayId: string }) {
         )}
       </div>
 
-      <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title="Nueva actividad" size="md"
-        footer={
-          <div className="flex justify-end gap-2">
-            <button onClick={() => { setIsAddOpen(false); setAttachFile(null); }} className="japan-btn border border-slate-300 hover:bg-slate-100 gap-2"><X size={15} /><span>Cancelar</span></button>
-            <button onClick={addActivity} disabled={(form.category === 'restaurant' ? !form.restaurant_name.trim() : !form.title.trim()) || uploading} className="japan-btn-primary gap-2 disabled:opacity-40">{uploading ? 'Subiendo...' : 'Añadir'}</button>
-          </div>
-        }
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="text-xs text-slate-600 font-semibold mb-2 block">Categoría</label>
-            <div className="grid grid-cols-3 gap-2">
-              {ACTIVITY_CATEGORIES.map((cat) => {
-                const Icon = cat.icon;
-                return (
-                  <button key={cat.id} onClick={() => setForm({ ...form, category: cat.id })} className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all ${form.category === cat.id ? `${cat.bg} ${cat.border} ${cat.color}` : 'border-slate-200 text-slate-500 hover:border-slate-400'}`}>
-                    <Icon size={13} /><span className="text-xs font-medium">{cat.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          {form.category === 'restaurant' ? (
-            <div className="space-y-3 p-4 rounded-xl border border-orange-200 bg-orange-50/40">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-orange-600 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
-                Datos del restaurante
-              </p>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-1">
-                  <label className="text-xs text-slate-600 font-semibold mb-1 block">Hora</label>
-                  <input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} className="japan-input" />
-                </div>
-                <div className="col-span-2">
-                  <label className="text-xs text-slate-600 font-semibold mb-1 block">Servicio</label>
-                  <select value={form.restaurant_service} onChange={(e) => setForm({ ...form, restaurant_service: e.target.value })} className="japan-input">
-                    <option value="">— Selecciona —</option>
-                    <option value="Desayuno">Desayuno</option>
-                    <option value="Almuerzo">Almuerzo</option>
-                    <option value="Cena">Cena</option>
-                    <option value="Snack/Street Food">Snack/Street Food</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="text-xs text-slate-600 font-semibold mb-1 block">Nombre del Restaurante</label>
-                <input value={form.restaurant_name} onChange={(e) => setForm({ ...form, restaurant_name: e.target.value, title: e.target.value })} placeholder="Ej: Ichiran, Acchichi Honpo" className="japan-input" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-slate-600 font-semibold mb-1 block">Tipo de Comida</label>
-                  <input value={form.restaurant_food_type} onChange={(e) => setForm({ ...form, restaurant_food_type: e.target.value })} placeholder="Ej: Ramen Tonkotsu, Yakiniku" className="japan-input" />
-                </div>
-                <div>
-                  <label className="text-xs text-slate-600 font-semibold mb-1 block">Precio Medio</label>
-                  <input value={form.restaurant_avg_price} onChange={(e) => setForm({ ...form, restaurant_avg_price: e.target.value })} placeholder="Ej: 2.000 - 3.500 ¥" className="japan-input" />
-                </div>
-              </div>
-              <div>
-                <label className="text-xs text-slate-600 font-semibold mb-1 block">Dirección / Ubicación</label>
-                <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Ej: Dotonbori, Osaka" className="japan-input" />
-              </div>
-              <div>
-                <label className="text-xs text-slate-600 font-semibold mb-1 block">Descripción / Notas</label>
-                <DescriptionTextarea value={form.restaurant_notes} onChange={(val) => setForm({ ...form, restaurant_notes: val })} rows={6} placeholder="Platos recomendados, detalles de reserva, notas..." />
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-1">
-                  <label className="text-xs text-slate-600 font-semibold mb-1 block">Hora</label>
-                  <input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} className="japan-input" />
-                </div>
-                <div className="col-span-2">
-                  <label className="text-xs text-slate-600 font-semibold mb-1 block">Título</label>
-                  <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Ej: Fushimi Inari" className="japan-input" onKeyDown={(e) => e.key === 'Enter' && addActivity()} />
-                </div>
-              </div>
-              <DescriptionTextarea value={form.description} onChange={(val) => setForm({ ...form, description: val })} rows={6} placeholder="Detalles, notas, reservas..." />
-            </>
-          )}
-          <button
-            type="button"
-            onClick={() => setForm({ ...form, has_pending_tasks: !form.has_pending_tasks })}
-            className={`w-full flex items-center gap-3 p-3.5 rounded-xl border transition-all text-left ${form.has_pending_tasks ? 'bg-orange-500/10 border-orange-500/30 text-orange-300' : 'border-slate-200 text-slate-500 hover:border-slate-400 hover:text-gray-400'}`}
-          >
-            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${form.has_pending_tasks ? 'bg-orange-500 border-orange-500' : 'border-gray-600'}`}>
-              {form.has_pending_tasks && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-            </div>
-            <div className="flex-1">
-              <span className="text-sm font-medium">¿Tiene tareas o reservas pendientes?</span>
-              {form.has_pending_tasks && (
-                <p className="text-xs text-orange-400/70 mt-0.5">Se mostrará un indicador de alerta en esta actividad</p>
-              )}
-            </div>
-            {form.has_pending_tasks && <AlertCircle size={16} className="text-orange-400 shrink-0" />}
-          </button>
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-            <div className="flex-1 japan-input flex items-center gap-2 cursor-pointer hover:border-cyan-500/40">
-              <Paperclip size={13} className="text-gray-500 shrink-0" />
-              <span className={`text-sm ${attachFile ? 'text-cyan-400' : 'text-gray-600'}`}>{attachFile ? attachFile.name : 'Adjuntar archivo...'}</span>
-            </div>
-            {attachFile && (
-              <button type="button" onClick={(e) => { e.stopPropagation(); setAttachFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }} className="w-9 h-9 flex items-center justify-center text-gray-600 hover:text-red-400 border border-gray-700 rounded-lg">
-                <X size={13} />
-              </button>
-            )}
-            <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp" onChange={(e) => setAttachFile(e.target.files?.[0] || null)} />
-          </div>
-        </div>
-      </Modal>
+      <ActivityModal
+        isOpen={isAddOpen}
+        onClose={() => setIsAddOpen(false)}
+        onSave={handleAddActivity}
+        saving={uploading}
+      />
 
       <Modal isOpen={!!deleteId} onClose={() => setDeleteId(null)} title="Eliminar actividad" size="sm"
         footer={

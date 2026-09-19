@@ -14,19 +14,8 @@ import { useImagePaste } from '../../hooks/useImagePaste';
 import { exportDayToPdf } from '../../lib/exportDayPdf';
 import { useReadOnly } from '../../lib/ReadOnlyContext';
 import { CITIES, type CityConfig } from './JapanMap';
+import ActivityModal, { type DayActivity, type ActivityFormData, ACTIVITY_CATEGORIES, getCatStyle, uploadActivityFile } from '../ActivityModal';
 
-interface DayActivity {
-  id: string;
-  day_id: string;
-  category: string;
-  time: string;
-  title: string;
-  description: string;
-  sort_order: number;
-  attachment_url?: string | null;
-  attachment_name?: string | null;
-  has_pending_tasks?: boolean;
-}
 
 interface ItineraryDay {
   id: string;
@@ -36,19 +25,6 @@ interface ItineraryDay {
   title: string;
   description: string;
   map_url?: string;
-}
-
-const ACTIVITY_CATEGORIES = [
-  { id: 'flight',    label: 'Transporte',    icon: TrainFront, color: 'text-white', bg: 'bg-sky-600',     border: 'border-sky-700' },
-  { id: 'transport', label: 'Desplazamiento', icon: Footprints, color: 'text-white', bg: 'bg-blue-600',    border: 'border-blue-700' },
-  { id: 'restaurant',label: 'Comida',        icon: Utensils,  color: 'text-white', bg: 'bg-orange-500',  border: 'border-orange-600' },
-  { id: 'activity',  label: 'Actividad',     icon: Sparkles,  color: 'text-white', bg: 'bg-emerald-600', border: 'border-emerald-700' },
-  { id: 'visit',     label: 'Visita',        icon: Camera,    color: 'text-white', bg: 'bg-pink-600',    border: 'border-pink-700' },
-  { id: 'landmark',  label: 'Monumento',     icon: Landmark,  color: 'text-white', bg: 'bg-amber-500',   border: 'border-amber-600' },
-];
-
-function getCatStyle(catId: string) {
-  return ACTIVITY_CATEGORIES.find((c) => c.id === catId) || ACTIVITY_CATEGORIES[3];
 }
 
 
@@ -557,11 +533,8 @@ export default function DayFullView({ day, cityStyle, onBack, days, allDays, onN
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [form, setForm] = useState({ category: 'activity', time: '', title: '', description: '', has_pending_tasks: false, restaurant_service: '', restaurant_name: '', restaurant_food_type: '', restaurant_avg_price: '', restaurant_notes: '' });
-  const [attachFile, setAttachFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const formatDate = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
 
@@ -579,31 +552,18 @@ export default function DayFullView({ day, cityStyle, onBack, days, allDays, onN
     return () => document.removeEventListener('keydown', handleKey);
   }, [onBack]);
 
-  const uploadFile = async (file: File): Promise<{ url: string; name: string } | null> => {
-    const ext = file.name.split('.').pop();
-    const path = `activities/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const { error } = await supabase.storage.from('attachments').upload(path, file, { upsert: false });
-    if (error) return null;
-    const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path);
-    return { url: urlData.publicUrl, name: file.name };
-  };
-
-  const addActivity = async () => {
-    const isRestaurant = form.category === 'restaurant';
-    if (isRestaurant ? !form.restaurant_name.trim() : !form.title.trim()) return;
+  const handleAddActivity = async (formData: ActivityFormData, attachFile: File | null) => {
     setUploading(true);
     let attachment_url: string | null = null;
     let attachment_name: string | null = null;
     if (attachFile) {
-      const res = await uploadFile(attachFile);
+      const res = await uploadActivityFile(attachFile);
       if (res) { attachment_url = res.url; attachment_name = res.name; }
     }
-    const { data } = await supabase.from('day_activities').insert({ ...form, day_id: day.id, sort_order: activities.length, attachment_url, attachment_name }).select().maybeSingle();
+    const { data } = await supabase.from('day_activities').insert({ ...formData, day_id: day.id, sort_order: activities.length, attachment_url, attachment_name }).select().maybeSingle();
     setUploading(false);
     if (data) {
       setActivities((prev) => [...prev, data].sort((a, b) => (a.time || '').localeCompare(b.time || '')));
-      setForm({ category: 'activity', time: '', title: '', description: '', has_pending_tasks: false, restaurant_service: '', restaurant_name: '', restaurant_food_type: '', restaurant_avg_price: '', restaurant_notes: '' });
-      setAttachFile(null);
       setIsAddOpen(false);
     }
   };
@@ -611,7 +571,7 @@ export default function DayFullView({ day, cityStyle, onBack, days, allDays, onN
   const saveEdit = async (id: string, updated: Partial<DayActivity>, file?: File | null) => {
     let updatedForm = { ...updated };
     if (file) {
-      const res = await uploadFile(file);
+      const res = await uploadActivityFile(file);
       if (res) updatedForm = { ...updatedForm, attachment_url: res.url, attachment_name: res.name };
     }
     await supabase.from('day_activities').update(updatedForm).eq('id', id);
@@ -872,123 +832,12 @@ export default function DayFullView({ day, cityStyle, onBack, days, allDays, onN
         </div>
       </div>
 
-      <Modal
+      <ActivityModal
         isOpen={isAddOpen}
         onClose={() => setIsAddOpen(false)}
-        title="Nueva actividad"
-        size="md"
-        footer={
-          <div className="flex justify-end gap-2">
-            <button onClick={() => { setIsAddOpen(false); setAttachFile(null); }} className="japan-btn border border-slate-300 hover:bg-slate-100 gap-2" style={{ color: '#475569' }}><X size={15} /><span>Cancelar</span></button>
-            <button onClick={addActivity} disabled={(form.category === 'restaurant' ? !form.restaurant_name.trim() : !form.title.trim()) || uploading} className="japan-btn-primary gap-2 disabled:opacity-40">{uploading ? 'Subiendo...' : 'Añadir'}</button>
-          </div>
-        }
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="text-xs font-semibold mb-2 block" style={{ color: '#475569' }}>Categoría</label>
-            <div className="grid grid-cols-3 gap-2">
-              {ACTIVITY_CATEGORIES.map((cat) => {
-                const Icon = cat.icon;
-                return (
-                  <button key={cat.id} onClick={() => setForm({ ...form, category: cat.id })} className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all ${form.category === cat.id ? `${cat.bg} ${cat.border} ${cat.color}` : 'border-slate-300 hover:border-slate-400'}`} style={form.category === cat.id ? undefined : { color: '#475569' }}>
-                    <Icon size={13} /><span className="text-xs font-medium">{cat.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          {form.category === 'restaurant' ? (
-            <div className="space-y-3 p-4 rounded-xl border border-orange-200 bg-orange-50/40">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-orange-600 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
-                Datos del restaurante
-              </p>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-1">
-                  <label className="text-xs font-semibold mb-1 block" style={{ color: '#475569' }}>Hora</label>
-                  <input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} className="japan-input" />
-                </div>
-                <div className="col-span-2">
-                  <label className="text-xs font-semibold mb-1 block" style={{ color: '#475569' }}>Servicio</label>
-                  <select value={form.restaurant_service} onChange={(e) => setForm({ ...form, restaurant_service: e.target.value })} className="japan-input">
-                    <option value="">— Selecciona —</option>
-                    <option value="Desayuno">Desayuno</option>
-                    <option value="Almuerzo">Almuerzo</option>
-                    <option value="Cena">Cena</option>
-                    <option value="Snack/Street Food">Snack/Street Food</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="text-xs font-semibold mb-1 block" style={{ color: '#475569' }}>Nombre del Restaurante</label>
-                <input value={form.restaurant_name} onChange={(e) => setForm({ ...form, restaurant_name: e.target.value, title: e.target.value })} placeholder="Ej: Ichiran, Acchichi Honpo" className="japan-input" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold mb-1 block" style={{ color: '#475569' }}>Tipo de Comida</label>
-                  <input value={form.restaurant_food_type} onChange={(e) => setForm({ ...form, restaurant_food_type: e.target.value })} placeholder="Ej: Ramen Tonkotsu, Yakiniku" className="japan-input" />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold mb-1 block" style={{ color: '#475569' }}>Precio Medio</label>
-                  <input value={form.restaurant_avg_price} onChange={(e) => setForm({ ...form, restaurant_avg_price: e.target.value })} placeholder="Ej: 2.000 - 3.500 ¥" className="japan-input" />
-                </div>
-              </div>
-              <div>
-                <label className="text-xs font-semibold mb-1 block" style={{ color: '#475569' }}>Dirección / Ubicación</label>
-                <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Ej: Dotonbori, Osaka" className="japan-input" />
-              </div>
-              <div>
-                <label className="text-xs font-semibold mb-1 block" style={{ color: '#475569' }}>Descripción / Notas</label>
-                <DescriptionTextarea value={form.restaurant_notes} onChange={(val) => setForm({ ...form, restaurant_notes: val })} rows={6} placeholder="Platos recomendados, detalles de reserva, notas..." />
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-1">
-                  <label className="text-xs font-semibold mb-1 block" style={{ color: '#475569' }}>Hora</label>
-                  <input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} className="japan-input" />
-                </div>
-                <div className="col-span-2">
-                  <label className="text-xs font-semibold mb-1 block" style={{ color: '#475569' }}>Título</label>
-                  <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Ej: Fushimi Inari" className="japan-input" onKeyDown={(e) => e.key === 'Enter' && addActivity()} />
-                </div>
-              </div>
-              <DescriptionTextarea value={form.description} onChange={(val) => setForm({ ...form, description: val })} rows={6} placeholder="Detalles, notas, reservas..." />
-            </>
-          )}
-          <button
-            type="button"
-            onClick={() => setForm({ ...form, has_pending_tasks: !form.has_pending_tasks })}
-            className={`w-full flex items-center gap-3 p-3.5 rounded-xl border transition-all text-left ${form.has_pending_tasks ? 'bg-orange-50 border-orange-300' : 'border-slate-300 hover:border-slate-400'}`}
-            style={form.has_pending_tasks ? { color: '#92400e' } : { color: '#475569' }}
-          >
-            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${form.has_pending_tasks ? 'bg-orange-500 border-orange-500' : 'border-slate-400'}`}>
-              {form.has_pending_tasks && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-            </div>
-            <div className="flex-1">
-              <span className="text-sm font-medium">¿Tiene tareas o reservas pendientes?</span>
-              {form.has_pending_tasks && (
-                <p className="text-xs text-orange-600 mt-0.5">Se mostrará un indicador de alerta en esta actividad</p>
-              )}
-            </div>
-            {form.has_pending_tasks && <AlertCircle size={16} className="text-orange-500 shrink-0" />}
-          </button>
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-            <div className="flex-1 japan-input flex items-center gap-2 cursor-pointer hover:border-cyan-400">
-              <Paperclip size={13} style={{ color: '#94a3b8' }} className="shrink-0" />
-              <span className={`text-sm ${attachFile ? 'text-cyan-700' : ''}`} style={attachFile ? undefined : { color: '#94a3b8' }}>{attachFile ? attachFile.name : 'Adjuntar archivo...'}</span>
-            </div>
-            {attachFile && (
-              <button type="button" onClick={(e) => { e.stopPropagation(); setAttachFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }} className="w-9 h-9 flex items-center justify-center hover:text-red-500 border border-slate-300 rounded-lg" style={{ color: '#64748b' }}>
-                <X size={13} />
-              </button>
-            )}
-            <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp" onChange={(e) => setAttachFile(e.target.files?.[0] || null)} />
-          </div>
-        </div>
-      </Modal>
+        onSave={handleAddActivity}
+        saving={uploading}
+      />
 
       <Modal isOpen={!!deleteId} onClose={() => setDeleteId(null)} title="Eliminar actividad" size="sm"
         footer={
