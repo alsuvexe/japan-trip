@@ -9,6 +9,7 @@ import Modal from '../Modal';
 import DayFullView from './DayFullView';
 import { WeatherWidgetFull } from './WeatherWidget';
 import { useAdmin } from '../../lib/AdminContext';
+import { useTrips } from '../../lib/TripContext';
 import { useReadOnly } from '../../lib/ReadOnlyContext';
 import { CITIES, type CityConfig } from './JapanMap';
 
@@ -121,6 +122,21 @@ export default function CityDetailPanel({ city, onClose, initialDayDate, onNavig
   const { isAdmin } = useAdmin();
   const isReadOnly = useReadOnly();
   const canEdit = isAdmin && !isReadOnly;
+  const { setSelectedItineraryDay } = useTrips();
+
+  useEffect(() => {
+    if (selectedDay) {
+      setSelectedItineraryDay({
+        id: selectedDay.id,
+        day_number: selectedDay.day_number,
+        date: selectedDay.date,
+        city: selectedDay.city,
+        title: selectedDay.title,
+      });
+    } else {
+      setSelectedItineraryDay(null);
+    }
+  }, [selectedDay, setSelectedItineraryDay]);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingDay, setEditingDay] = useState<ItineraryDay | null>(null);

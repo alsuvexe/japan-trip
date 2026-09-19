@@ -16,6 +16,7 @@ import {
   ClipboardList,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useTrips } from '../lib/TripContext';
 
 /* ─── Types ─── */
 interface Message {
@@ -78,7 +79,7 @@ async function buildTripContext(): Promise<string> {
 
   if (tripRes.data) {
     const t = tripRes.data;
-    sections.push(`INFORMACIÓN DEL VIAJE:\n- Título: ${t.title || 'Viaje a Japón'}\n- Fechas: ${t.start_date} a ${t.end_date}`);
+    sections.push(`=== INFORMACION DEL VIAJE ===\nTitulo: ${t.title || 'Viaje a Japon'}\nFechas: ${t.start_date} a ${t.end_date}`);
   }
 
   if (daysRes.data && daysRes.data.length > 0) {
@@ -92,25 +93,39 @@ async function buildTripContext(): Promise<string> {
     const itinLines = daysRes.data.map((d: any) => {
       const acts = actByDay.get(d.id) || [];
       const actStr = acts.length > 0
-        ? acts.map((a: any) => `  · ${a.time || 'Sin hora'} - ${a.title}${a.description ? ` (${a.description})` : ''} [${a.category}]`).join('\n')
-        : '  · Sin actividades planificadas';
-      return `Día ${d.day_number} (${d.date}) - ${d.city}${d.title ? ': ' + d.title : ''}\n${actStr}`;
+        ? acts.map((a: any) => {
+            let line = `  - ${a.time || 'Sin hora'} | ${a.title} [${a.category}]`;
+            if (a.description) line += ` (${a.description})`;
+            if (a.restaurant_name) line += ` | Restaurante: ${a.restaurant_name}`;
+            if (a.restaurant_cuisine) line += ` (${a.restaurant_cuisine})`;
+            return line;
+          }).join('\n')
+        : '  - Sin actividades planificadas';
+      return `DIA ${d.day_number} | ${d.date} | ${d.city}${d.title ? ' | ' + d.title : ''}\n${actStr}`;
     });
-    sections.push(`ITINERARIO DÍA A DÍA:\n${itinLines.join('\n\n')}`);
+    sections.push(`=== ITINERARIO DIA A DIA ===\n${itinLines.join('\n\n')}`);
   }
 
   if (hotelsRes.data && hotelsRes.data.length > 0) {
     const lines = hotelsRes.data.map((h: any) =>
-      `- ${h.name} (${h.city}): Check-in ${h.check_in}, Check-out ${h.check_out}${h.address ? ', Dirección: ' + h.address : ''}${h.confirmation_code ? ', Código: ' + h.confirmation_code : ''}${h.notes ? ', Notas: ' + h.notes : ''}`
+      `- ${h.name} (${h.city}): Check-in ${h.check_in}, Check-out ${h.check_out}${h.address ? ', Dir: ' + h.address : ''}${h.confirmation_code ? ', Codigo: ' + h.confirmation_code : ''}${h.notes ? ', Notas: ' + h.notes : ''}`
     );
-    sections.push(`HOTELES:\n${lines.join('\n')}`);
+    sections.push(`=== HOTELES ===\n${lines.join('\n')}`);
   }
 
   if (restaurantsRes.data && restaurantsRes.data.length > 0) {
-    const lines = restaurantsRes.data.map((r: any) =>
-      `- ${r.name} (${r.city}${r.cuisine_type ? ', ' + r.cuisine_type : ''}): ${r.address || 'Sin dirección'}${r.reservation_date ? ', Reserva: ' + r.reservation_date + (r.reservation_time ? ' a las ' + r.reservation_time : '') : ''}${r.priority === 'high' ? ' ⭐ Alta prioridad' : ''}${r.avg_price_per_person ? ', ~¥' + r.avg_price_per_person + '/persona' : ''}${r.notes ? ', Notas: ' + r.notes : ''}`
-    );
-    sections.push(`RESTAURANTES:\n${lines.join('\n')}`);
+    const lines = restaurantsRes.data.map((r: any) => {
+      let line = `- ${r.name} (${r.city}`;
+      if (r.cuisine_type) line += `, Tipo: ${r.cuisine_type}`;
+      line += ')';
+      if (r.address) line += ` | Dir: ${r.address}`;
+      if (r.reservation_date) line += ` | Reserva: ${r.reservation_date}${r.reservation_time ? ' a las ' + r.reservation_time : ''}`;
+      if (r.priority === 'high') line += ' | ALTA PRIORIDAD';
+      if (r.avg_price_per_person) line += ` | ~${r.avg_price_per_person} yen/persona`;
+      if (r.notes) line += ` | Notas: ${r.notes}`;
+      return line;
+    });
+    sections.push(`=== RESTAURANTES ===\n${lines.join('\n')}`);
   }
 
   if (todosRes.data && todosRes.data.length > 0) {
@@ -126,24 +141,38 @@ async function buildTripContext(): Promise<string> {
     });
 
     const pendingLines = pending.map((t: any) =>
-      `- [PENDIENTE] ${t.title} (${t.category})${t.assignees?.length ? ' → Asignado a: ' + t.assignees.join(', ') : ''}${t.completed_by?.length ? ' (Completado por: ' + t.completed_by.join(', ') + ')' : ''}${t.due_date ? ' · Vence: ' + t.due_date : ''}`
+      `- [PENDIENTE] ${t.title} (${t.category})${t.assignees?.length ? ' -> Asignado a: ' + t.assignees.join(', ') : ''}${t.completed_by?.length ? ' (Completado por: ' + t.completed_by.join(', ') + ')' : ''}${t.due_date ? ' | Vence: ' + t.due_date : ''}`
     );
     const doneLines = done.map((t: any) => `- [COMPLETADA] ${t.title} (${t.category})`);
-    sections.push(`TAREAS (${pending.length} pendientes, ${done.length} completadas):\n${pendingLines.join('\n')}${doneLines.length > 0 ? '\n' + doneLines.join('\n') : ''}`);
+    sections.push(`=== TAREAS (${pending.length} pendientes, ${done.length} completadas) ===\n${pendingLines.join('\n')}${doneLines.length > 0 ? '\n' + doneLines.join('\n') : ''}`);
   }
 
   if (logisticsRes.data && logisticsRes.data.length > 0) {
     const lines = logisticsRes.data.map((l: any) =>
       `- [${l.status}] ${l.title} (${l.category})${l.date ? ', Fecha: ' + l.date : ''}${l.description ? ': ' + l.description : ''}`
     );
-    sections.push(`LOGÍSTICA:\n${lines.join('\n')}`);
+    sections.push(`=== LOGISTICA (Vuelos, Transportes, etc.) ===\n${lines.join('\n')}`);
   }
 
   const today = new Date().toISOString().slice(0, 10);
-  return `Fecha actual: ${today}\n\n${sections.join('\n\n---\n\n')}`;
+  return `Fecha real de hoy: ${today}\n\n${sections.join('\n\n')}`;
 }
 
-const SYSTEM_PROMPT = `Eres el asistente personal de este viaje a Japón. Responde a las dudas del usuario basándote en los datos de su planificación actual proporcionados a continuación. Si la información solicitada no está en el plan, indícalo amablemente. Responde siempre en español, de forma concisa y útil. Cuando menciones fechas, usa formato legible (ej: "lunes 7 de diciembre"). Si el usuario pregunta qué hacer hoy, mira la fecha actual y busca las actividades correspondientes.`;
+function buildSystemPrompt(selectedDayLabel: string): string {
+  return `Eres el asistente personal del viaje a Japon (del 4 al 14 de diciembre de 2026).
+Tu objetivo es responder con absoluta precision basandote UNICAMENTE en los datos reales del itinerario.
+
+DIA SELECCIONADO EN LA APP: ${selectedDayLabel}
+
+REGLAS DE ORO OBLIGATORIAS:
+1. REVISION COMPLETA: Antes de responder "No esta programado" o "No esta en el itinerario" a cualquier pregunta sobre restaurantes, tipos de comida (como Omakase, Sushi, Ramen, Okonomiyaki) o excursiones (como Nara), REVISA MINUCIOSAMENTE el itinerario de TODOS los dias, incluyendo descripciones y notas de restaurantes. No asumas que no existe sin comprobarlo.
+2. MANEJO DE "HOY": Si el usuario pregunta que comer o hacer "hoy", refiérete al dia seleccionado actualmente en la aplicacion (${selectedDayLabel}), aclarando de que dia del viaje estas hablando (ej: "Para el dia 4 de diciembre en Osaka...").
+3. OMAKASE Y DETALLES: Ten en cuenta detalles especificos de los restaurantes (por ejemplo, si las notas dicen 'Omakase' o 'Sushi de alta gama', mencionalo).
+4. SUGERENCIAS EXTERNAS: Si te piden recomendaciones de cosas no incluidas, confirma primero que platos o lugares similares SI tienen ya en el itinerario antes de proponer sitios nuevos.
+5. RIGOR Y BREVEDAD: Responde en espanol, de forma directa, amable y estructurada. Si no sabes un dato porque no esta en el itinerario, dilo claramente en lugar de inventarlo.
+6. FECHAS LEGIBLES: Cuando menciones fechas, usa formato legible (ej: "viernes 4 de diciembre", "sabado 5 de diciembre").
+7. NO INVENTES: Nunca inventes actividades, restaurantes, horarios o datos que no esten en la informacion proporcionada.`;
+}
 
 /* ─── API call helpers ─── */
 async function callOpenAI(messages: { role: string; content: string }[], apiKey: string): Promise<string> {
@@ -162,6 +191,7 @@ async function callOpenAI(messages: { role: string; content: string }[], apiKey:
 
 /* ─── Component ─── */
 export default function TravelAssistant() {
+  const { selectedItineraryDay } = useTrips();
   const [isOpen, setIsOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -222,8 +252,12 @@ export default function TravelAssistant() {
       try {
         const tripContext = await buildTripContext();
 
+        const selectedDayLabel = selectedItineraryDay
+          ? `Dia ${selectedItineraryDay.day_number} (${selectedItineraryDay.date}) - ${selectedItineraryDay.city}${selectedItineraryDay.title ? ': ' + selectedItineraryDay.title : ''}`
+          : 'Ningun dia seleccionado (responde sobre el viaje en general)';
+
         const apiMessages = [
-          { role: 'system', content: `${SYSTEM_PROMPT}\n\nDATOS DEL VIAJE:\n${tripContext}` },
+          { role: 'system', content: `${buildSystemPrompt(selectedDayLabel)}\n\n=== DATOS COMPLETOS DEL VIAJE ===\n${tripContext}` },
           ...messages
             .filter((m) => m.role !== 'system')
             .map((m) => ({ role: m.role, content: m.content })),
@@ -245,7 +279,7 @@ export default function TravelAssistant() {
         setIsLoading(false);
       }
     },
-    [apiKey, messages, isLoading],
+    [apiKey, messages, isLoading, selectedItineraryDay],
   );
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

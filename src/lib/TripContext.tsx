@@ -118,6 +118,14 @@ function persistReservations(items: TripReservation[]) {
 
 export { DEFAULT_THEME };
 
+export interface SelectedItineraryDay {
+  id: string;
+  day_number: number;
+  date: string;
+  city: string;
+  title: string;
+}
+
 interface TripContextValue {
   trips: Trip[];
   activeTrip: Trip | null;
@@ -130,6 +138,8 @@ interface TripContextValue {
   reservations: TripReservation[];
   addReservation: (reservation: Omit<TripReservation, 'id'>) => void;
   deleteReservation: (id: string) => void;
+  selectedItineraryDay: SelectedItineraryDay | null;
+  setSelectedItineraryDay: (day: SelectedItineraryDay | null) => void;
 }
 
 const TripContext = createContext<TripContextValue>({
@@ -144,6 +154,8 @@ const TripContext = createContext<TripContextValue>({
   reservations: [],
   addReservation: () => {},
   deleteReservation: () => {},
+  selectedItineraryDay: null,
+  setSelectedItineraryDay: () => {},
 });
 
 export function TripProvider({ children }: { children: ReactNode }) {
@@ -151,6 +163,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
   const [activeTrip, setActiveTrip] = useState<Trip | null>(null);
   const [activities, setActivities] = useState<TripActivity[]>(loadActivities);
   const [reservations, setReservations] = useState<TripReservation[]>(loadReservations);
+  const [selectedItineraryDay, setSelectedItineraryDay] = useState<SelectedItineraryDay | null>(null);
 
   const addTrip = useCallback((data: Omit<Trip, 'id' | 'theme'>) => {
     const newTrip: Trip = {
@@ -209,7 +222,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <TripContext.Provider value={{ trips, activeTrip, setActiveTrip, addTrip, updateTrip, activities, addActivity, deleteActivity, reservations, addReservation, deleteReservation }}>
+    <TripContext.Provider value={{ trips, activeTrip, setActiveTrip, addTrip, updateTrip, activities, addActivity, deleteActivity, reservations, addReservation, deleteReservation, selectedItineraryDay, setSelectedItineraryDay }}>
       {children}
     </TripContext.Provider>
   );
