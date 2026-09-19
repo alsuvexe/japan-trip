@@ -1,4 +1,4 @@
-import { CalendarCheck, Plane, Clock, ChevronRight, CheckCircle2, Timer, Pencil, Check, X, Compass } from 'lucide-react';
+import { CalendarCheck, Plane, Clock, ChevronRight, CheckCircle2, Timer, Pencil, Check, X, Compass, MapPin, Building2, Sparkles } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
@@ -100,6 +100,18 @@ const CITY_THEMES: Record<string, {
   },
 };
 
+const CITY_IMAGES: Record<string, string> = {
+  Osaka: 'https://images.pexels.com/photos/11115038/pexels-photo-11115038.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+  Kioto: 'https://images.pexels.com/photos/569893/pexels-photo-569893.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+  Tokio: 'https://images.pexels.com/photos/31048512/pexels-photo-31048512.jpeg?auto=compress&cs=tinysrgb&h=650&w=940',
+};
+
+const CITY_DESCRIPTIONS: Record<string, string> = {
+  Osaka: 'La capital gastronómica de Japón. Street food, cultura vibrante y la energía de Dotonbori te esperan.',
+  Kioto: 'Templos milenarios, jardines zen y geishas en Gion. El corazón tradicional de Japón.',
+  Tokio: 'La metrópolis del futuro. Tecnología, moda, gastronomía de clase mundial y barrios únicos.',
+};
+
 export default function Resumen({ onSectionChange }: ResumenProps) {
   const { todos } = useTodos();
   const { isAdmin } = useAdmin();
@@ -107,6 +119,7 @@ export default function Resumen({ onSectionChange }: ResumenProps) {
   const [selectedCity, setSelectedCity] = useState<CityConfig | null>(null);
   const [weatherData, setWeatherData] = useState<Record<string, WeatherData>>({});
   const [cityDateRanges, setCityDateRanges] = useState<Record<string, string>>({});
+  const [cityStats, setCityStats] = useState<Record<string, { dayCount: number; activityCount: number; hotelName: string | null }>>({});
 
   // Derived todo stats from shared context (always in sync)
   const overallProgress = calcOverallProgress(todos);
@@ -168,6 +181,22 @@ export default function Resumen({ onSectionChange }: ResumenProps) {
           }),
       ),
     ).then((entries) => setCityDateRanges(Object.fromEntries(entries)));
+
+    Promise.all(
+      CITIES.map(async (city) => {
+        const [daysRes, hotelsRes] = await Promise.all([
+          supabase.from('itinerary_days').select('id').eq('city', city.id),
+          supabase.from('hotels').select('name').eq('city', city.id).limit(1).maybeSingle(),
+        ]);
+        const dayIds = daysRes.data?.map((d: any) => d.id) ?? [];
+        let actCount = 0;
+        if (dayIds.length > 0) {
+          const { count } = await supabase.from('day_activities').select('id', { count: 'exact', head: true }).in('day_id', dayIds);
+          actCount = count ?? 0;
+        }
+        return [city.id, { dayCount: dayIds.length, activityCount: actCount, hotelName: hotelsRes.data?.name ?? null }] as const;
+      }),
+    ).then((entries) => setCityStats(Object.fromEntries(entries)));
   }, []);
 
   // Realtime: re-fetch itinerary_days dates on any change
@@ -654,84 +683,163 @@ export default function Resumen({ onSectionChange }: ResumenProps) {
       </div>
 
       {/* ── CITY CARDS (redesigned) ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {CITIES.map((city, i) => {
-          const theme = CITY_THEMES[city.id] ?? CITY_THEMES['Osaka'];
-          return (
-            <motion.button
-              key={city.id}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.08 + i * 0.10, type: 'spring', stiffness: 260, damping: 22 }}
-              onClick={() => onSectionChange?.('itinerario', city.id)}
-              whileHover={{ y: -5, scale: 1.025 }}
-              whileTap={{ scale: 0.97 }}
-              className="group relative rounded-3xl text-left overflow-hidden cursor-pointer"
-              style={{
-                background: theme.gradientIdle,
-                border: `1.5px solid ${theme.borderColor}`,
-                backdropFilter: 'blur(28px)',
-                WebkitBackdropFilter: 'blur(28px)',
-                boxShadow: `0 4px 24px ${theme.shadowColor}, 0 1px 0 rgba(255,255,255,0.70) inset`,
-                transition: 'background 0.30s ease, box-shadow 0.30s ease',
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.background = theme.gradientHover;
-                (e.currentTarget as HTMLElement).style.boxShadow = `0 12px 36px ${theme.shadowHover}, 0 1px 0 rgba(255,255,255,0.80) inset`;
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.background = theme.gradientIdle;
-                (e.currentTarget as HTMLElement).style.boxShadow = `0 4px 24px ${theme.shadowColor}, 0 1px 0 rgba(255,255,255,0.70) inset`;
-              }}
-            >
-              {/* Decorative glow orb */}
-              <div
-                className="absolute -top-8 -right-8 w-32 h-32 rounded-full pointer-events-none"
-                style={{ background: `radial-gradient(circle, ${theme.orbColor} 0%, transparent 70%)` }}
-              />
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-xs font-bold uppercase tracking-widest" style={{ color: '#a0aec0' }}>
+            Destinos del viaje
+          </span>
+          <div className="flex-1 h-px" style={{ background: 'rgba(0,0,0,0.07)' }} />
+        </div>
 
-              <div className="relative z-10 p-5">
-                {/* Top row: floating icon */}
-                <div className="flex items-start mb-3">
-                  <motion.span
-                    className="text-4xl leading-none select-none"
-                    animate={{ y: [0, -4, 0] }}
-                    transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut', delay: i * 0.8 }}
-                  >
-                    {city.icon}
-                  </motion.span>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {CITIES.map((city, i) => {
+            const theme = CITY_THEMES[city.id] ?? CITY_THEMES['Osaka'];
+            const stats = cityStats[city.id];
+            const cityImage = CITY_IMAGES[city.id];
+
+            return (
+              <motion.div
+                key={city.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.06 + i * 0.12, type: 'spring', stiffness: 240, damping: 22 }}
+                className="group flex flex-col rounded-2xl overflow-hidden cursor-pointer"
+                style={{
+                  background: 'rgba(255,255,255,0.88)',
+                  backdropFilter: 'blur(24px)',
+                  WebkitBackdropFilter: 'blur(24px)',
+                  border: `1px solid rgba(255,255,255,0.6)`,
+                  boxShadow: '0 4px 24px rgba(0,0,0,0.08), 0 1px 0 rgba(255,255,255,0.85) inset',
+                  transition: 'box-shadow 0.3s ease, transform 0.3s ease',
+                }}
+                onClick={() => onSectionChange?.('itinerario', city.id)}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.boxShadow = `0 16px 48px ${theme.shadowHover}, 0 2px 0 rgba(255,255,255,0.90) inset`;
+                  (e.currentTarget as HTMLElement).style.transform = 'translateY(-6px)';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 24px rgba(0,0,0,0.08), 0 1px 0 rgba(255,255,255,0.85) inset';
+                  (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
+                }}
+              >
+                {/* Image header */}
+                <div className="relative aspect-video overflow-hidden">
+                  <img
+                    src={cityImage}
+                    alt={city.name}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent" />
+
+                  {/* Date badge */}
+                  <div className="absolute top-3 left-3">
+                    <span
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold text-white"
+                      style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
+                    >
+                      <CalendarCheck size={12} />
+                      {cityDateRanges[city.id] ?? city.dates}
+                    </span>
+                  </div>
+
+                  {/* City accent bar */}
+                  <div
+                    className="absolute bottom-0 left-0 right-0 h-1"
+                    style={{ background: `linear-gradient(90deg, ${theme.accentSolid}, ${theme.orbColor})` }}
+                  />
+
+                  {/* City name on image */}
+                  <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between">
+                    <div>
+                      <span className="text-3xl leading-none select-none mr-2 drop-shadow-lg">{city.icon}</span>
+                      <h3 className="inline text-xl font-extrabold text-white drop-shadow-lg tracking-tight">
+                        {city.name}
+                      </h3>
+                    </div>
+                  </div>
                 </div>
 
-                {/* City name */}
-                <p className="text-lg font-extrabold tracking-tight mb-0.5" style={{ color: '#0f172a', letterSpacing: '-0.02em' }}>
-                  {city.name}
-                </p>
+                {/* Card body */}
+                <div className="flex flex-col flex-1 p-5">
+                  {/* Description */}
+                  <p className="text-xs font-medium mb-4" style={{ color: '#64748b', lineHeight: '1.5' }}>
+                    {CITY_DESCRIPTIONS[city.id]}
+                  </p>
 
-                {/* Date chip */}
-                <div className="inline-flex items-center gap-1 mb-3">
-                  <span
-                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                    style={{ background: `${theme.accentSolid}14`, color: theme.accentSolid }}
+                  {/* Stat counters */}
+                  <div className="grid grid-cols-3 gap-2 mb-4">
+                    <div
+                      className="flex flex-col items-center py-2.5 rounded-xl"
+                      style={{ background: `${theme.accentSolid}08` }}
+                    >
+                      <span className="text-lg font-black" style={{ color: theme.accentSolid }}>
+                        {stats?.dayCount ?? '-'}
+                      </span>
+                      <span className="text-[10px] font-semibold" style={{ color: '#94a3b8' }}>
+                        {(stats?.dayCount ?? 0) === 1 ? 'dia' : 'dias'}
+                      </span>
+                    </div>
+                    <div
+                      className="flex flex-col items-center py-2.5 rounded-xl"
+                      style={{ background: `${theme.accentSolid}08` }}
+                    >
+                      <span className="text-lg font-black" style={{ color: theme.accentSolid }}>
+                        {stats?.activityCount ?? '-'}
+                      </span>
+                      <span className="text-[10px] font-semibold" style={{ color: '#94a3b8' }}>
+                        actividades
+                      </span>
+                    </div>
+                    <div
+                      className="flex flex-col items-center py-2.5 rounded-xl"
+                      style={{ background: `${theme.accentSolid}08` }}
+                    >
+                      <Building2 size={16} style={{ color: theme.accentSolid }} className="mb-0.5" />
+                      <span className="text-[10px] font-semibold text-center leading-tight truncate w-full px-1" style={{ color: '#94a3b8' }}>
+                        {stats?.hotelName ? stats.hotelName.split(' ').slice(0, 2).join(' ') : 'Sin hotel'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Weather */}
+                  <div className="mb-4">
+                    <WeatherWidgetCompact
+                      lat={city.lat}
+                      lon={city.lon}
+                      cityId={city.id}
+                      textColor={city.textColor}
+                      onData={handleWeatherData(city.id)}
+                    />
+                  </div>
+
+                  {/* Action button */}
+                  <button
+                    className="w-full mt-auto flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all duration-200"
+                    style={{
+                      background: `${theme.accentSolid}0C`,
+                      color: theme.accentSolid,
+                      border: `1.5px solid ${theme.accentSolid}25`,
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLElement).style.background = theme.accentSolid;
+                      (e.currentTarget as HTMLElement).style.color = '#ffffff';
+                      (e.currentTarget as HTMLElement).style.borderColor = theme.accentSolid;
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLElement).style.background = `${theme.accentSolid}0C`;
+                      (e.currentTarget as HTMLElement).style.color = theme.accentSolid;
+                      (e.currentTarget as HTMLElement).style.borderColor = `${theme.accentSolid}25`;
+                    }}
                   >
-                    {cityDateRanges[city.id] ?? city.dates}
-                  </span>
+                    <Sparkles size={14} />
+                    Explorar {city.name}
+                    <ChevronRight size={14} className="transition-transform group-hover:translate-x-0.5" />
+                  </button>
                 </div>
-
-                {/* Divider */}
-                <div className="w-full h-px mb-3" style={{ background: `${theme.accentSolid}18` }} />
-
-                {/* Weather */}
-                <WeatherWidgetCompact
-                  lat={city.lat}
-                  lon={city.lon}
-                  cityId={city.id}
-                  textColor={city.textColor}
-                  onData={handleWeatherData(city.id)}
-                />
-              </div>
-            </motion.button>
-          );
-        })}
+              </motion.div>
+            );
+          })}
+        </div>
       </div>
 
       <CityDetailPanel city={selectedCity} onClose={() => setSelectedCity(null)} />
