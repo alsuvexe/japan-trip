@@ -15,6 +15,7 @@ import { AdminProvider } from './lib/AdminContext';
 import { TripProvider, useTrips } from './lib/TripContext';
 import { ReadOnlyProvider, useReadOnly } from './lib/ReadOnlyContext';
 import { BookOpen } from 'lucide-react';
+import TravelAssistant from './components/TravelAssistant';
 
 function JapanTripView() {
   const { activeTrip, setActiveTrip } = useTrips();
@@ -79,6 +80,7 @@ function JapanTripView() {
           </div>
         </main>
       </div>
+      <TravelAssistant />
     </div>
   );
 }
