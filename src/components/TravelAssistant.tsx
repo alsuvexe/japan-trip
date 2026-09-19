@@ -15,6 +15,7 @@ import {
   MapPin,
   ClipboardList,
 } from 'lucide-react';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { supabase } from '../lib/supabase';
 
 /* ─── Types ─── */
@@ -162,14 +163,7 @@ async function callOpenAI(messages: { role: string; content: string }[], apiKey:
   return data.choices?.[0]?.message?.content ?? 'Sin respuesta.';
 }
 
-async function callGeminiSingle(
-  modelName: string,
-  messages: { role: string; content: string }[],
-  apiKey: string,
-): Promise<string> {
-  const cleanModel = modelName.replace(/^models\//, '');
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${apiKey}`;
-
+async function callGemini(messages: { role: string; content: string }[], apiKey: string): Promise<string> {
   const systemMsg = messages.find((m) => m.role === 'system');
   const userParts = messages
     .filter((m) => m.role !== 'system')
@@ -180,38 +174,12 @@ async function callGeminiSingle(
     ? `${systemMsg.content}\n\n---\n\nPregunta del usuario:\n${userParts}`
     : userParts;
 
-  const body = {
-    contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
-  };
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    const errBody = await res.json().catch(() => ({}));
-    console.error(`[TravelAssistant] Gemini API error (${cleanModel}, status ${res.status}):`, errBody);
-    throw new Error(errBody.error?.message || `Gemini error ${res.status} (${cleanModel})`);
-  }
-
-  const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? 'Sin respuesta.';
-}
-
-async function callGemini(messages: { role: string; content: string }[], apiKey: string): Promise<string> {
-  try {
-    return await callGeminiSingle('gemini-1.5-flash', messages, apiKey);
-  } catch (primaryErr: any) {
-    console.error('[TravelAssistant] Modelo principal falló, intentando fallback:', primaryErr.message);
-    try {
-      return await callGeminiSingle('gemini-1.5-pro', messages, apiKey);
-    } catch (fallbackErr: any) {
-      console.error('[TravelAssistant] Fallback también falló:', fallbackErr.message);
-      throw fallbackErr;
-    }
-  }
+  const result = await model.generateContent(fullPrompt);
+  const response = await result.response;
+  return response.text() || 'Sin respuesta.';
 }
 
 /* ─── Component ─── */
