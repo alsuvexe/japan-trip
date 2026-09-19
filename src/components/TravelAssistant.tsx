@@ -206,7 +206,7 @@ async function callGemini(messages: { role: string; content: string }[], apiKey:
   } catch (primaryErr: any) {
     console.error('[TravelAssistant] Modelo principal falló, intentando fallback:', primaryErr.message);
     try {
-      return await callGeminiSingle('gemini-2.0-flash', messages, apiKey);
+      return await callGeminiSingle('gemini-1.5-pro', messages, apiKey);
     } catch (fallbackErr: any) {
       console.error('[TravelAssistant] Fallback también falló:', fallbackErr.message);
       throw fallbackErr;
