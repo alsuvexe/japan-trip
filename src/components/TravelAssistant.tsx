@@ -162,7 +162,13 @@ async function callOpenAI(messages: { role: string; content: string }[], apiKey:
   return data.choices?.[0]?.message?.content ?? 'Sin respuesta.';
 }
 
-async function callGemini(messages: { role: string; content: string }[], apiKey: string): Promise<string> {
+const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'] as const;
+
+async function callGeminiModel(
+  model: string,
+  messages: { role: string; content: string }[],
+  apiKey: string,
+): Promise<string> {
   const systemMsg = messages.find((m) => m.role === 'system');
   const chatMessages = messages.filter((m) => m.role !== 'system');
 
@@ -178,15 +184,27 @@ async function callGemini(messages: { role: string; content: string }[], apiKey:
   body.generationConfig = { maxOutputTokens: 1024, temperature: 0.7 };
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
     { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
   );
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error?.message || `Gemini error ${res.status}`);
+    throw new Error(err.error?.message || `Gemini error ${res.status} (${model})`);
   }
   const data = await res.json();
   return data.candidates?.[0]?.content?.parts?.[0]?.text ?? 'Sin respuesta.';
+}
+
+async function callGemini(messages: { role: string; content: string }[], apiKey: string): Promise<string> {
+  let lastError: Error | null = null;
+  for (const model of GEMINI_MODELS) {
+    try {
+      return await callGeminiModel(model, messages, apiKey);
+    } catch (err: any) {
+      lastError = err;
+    }
+  }
+  throw lastError ?? new Error('Todos los modelos de Gemini fallaron.');
 }
 
 /* ─── Component ─── */
@@ -368,7 +386,7 @@ export default function TravelAssistant() {
                     Asistente de viaje
                   </h3>
                   <p className="text-[10px] font-medium" style={{ color: '#64748b' }}>
-                    {provider === 'openai' ? 'GPT-4o mini' : 'Gemini 1.5 Flash'}
+                    {provider === 'openai' ? 'GPT-4o mini' : 'Gemini 2.5 Flash'}
                     {!hasKey && ' · Sin clave configurada'}
                   </p>
                 </div>
