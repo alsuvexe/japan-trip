@@ -175,11 +175,25 @@ async function callGemini(messages: { role: string; content: string }[], apiKey:
     : userParts;
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const candidateModels = [
+    'gemini-1.5-flash-latest',
+    'gemini-1.5-flash-002',
+    'gemini-1.5-pro-latest',
+  ];
 
-  const result = await model.generateContent(fullPrompt);
-  const response = await result.response;
-  return response.text() || 'Sin respuesta.';
+  let lastError: any = null;
+  for (const modelName of candidateModels) {
+    try {
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent(fullPrompt);
+      const response = await result.response;
+      return response.text() || 'Sin respuesta.';
+    } catch (err) {
+      lastError = err;
+      console.warn(`[TravelAssistant] Fallo con ${modelName}, probando el siguiente modelo...`, err);
+    }
+  }
+  throw lastError ?? new Error('Todos los modelos de Gemini fallaron.');
 }
 
 /* ─── Component ─── */
