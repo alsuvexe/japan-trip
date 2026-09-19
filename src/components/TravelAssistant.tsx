@@ -25,8 +25,6 @@ interface Message {
   timestamp: Date;
 }
 
-type Provider = 'openai' | 'gemini';
-
 interface QuickAction {
   label: string;
   prompt: string;
@@ -162,42 +160,6 @@ async function callOpenAI(messages: { role: string; content: string }[], apiKey:
   return data.choices?.[0]?.message?.content ?? 'Sin respuesta.';
 }
 
-async function callGemini(messages: { role: string; content: string }[], apiKey: string): Promise<string> {
-  const systemMsg = messages.find((m) => m.role === 'system');
-  const userParts = messages
-    .filter((m) => m.role !== 'system')
-    .map((m) => m.content)
-    .join('\n\n');
-
-  const fullPrompt = systemMsg
-    ? `${systemMsg.content}\n\n---\n\nPregunta del usuario:\n${userParts}`
-    : userParts;
-
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-goog-api-key': apiKey,
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
-    }),
-  });
-
-  if (!res.ok) {
-    const errData = await res.json().catch(() => null);
-    const msg = errData?.error?.message || `Error HTTP ${res.status}`;
-    console.error('[TravelAssistant] Gemini API error:', errData);
-    throw new Error(msg);
-  }
-
-  const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? 'Sin respuesta.';
-}
-
 /* ─── Component ─── */
 export default function TravelAssistant() {
   const [isOpen, setIsOpen] = useState(false);
@@ -207,23 +169,13 @@ export default function TravelAssistant() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [provider, setProvider] = useState<Provider>(() => {
-    const saved = localStorage.getItem('ta_provider');
-    if (saved === 'openai' || saved === 'gemini') return saved;
-    if (import.meta.env.VITE_OPENAI_API_KEY) return 'openai';
-    if (import.meta.env.VITE_GEMINI_API_KEY) return 'gemini';
-    return 'openai';
-  });
-
   const [apiKey, setApiKey] = useState(() => {
     const saved = localStorage.getItem('ta_api_key');
     if (saved) return saved;
-    if (provider === 'openai') return import.meta.env.VITE_OPENAI_API_KEY || '';
-    return import.meta.env.VITE_GEMINI_API_KEY || '';
+    return import.meta.env.VITE_OPENAI_API_KEY || '';
   });
 
   const [keyDraft, setKeyDraft] = useState(apiKey);
-  const [providerDraft, setProviderDraft] = useState(provider);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -241,13 +193,11 @@ export default function TravelAssistant() {
   }, [isOpen]);
 
   const saveSettings = useCallback(() => {
-    setProvider(providerDraft);
     setApiKey(keyDraft);
-    localStorage.setItem('ta_provider', providerDraft);
     localStorage.setItem('ta_api_key', keyDraft);
     setShowSettings(false);
     setError(null);
-  }, [providerDraft, keyDraft]);
+  }, [keyDraft]);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -280,10 +230,7 @@ export default function TravelAssistant() {
           { role: 'user', content: text.trim() },
         ];
 
-        const reply =
-          provider === 'openai'
-            ? await callOpenAI(apiMessages, apiKey)
-            : await callGemini(apiMessages, apiKey);
+        const reply = await callOpenAI(apiMessages, apiKey);
 
         const assistantMsg: Message = {
           id: crypto.randomUUID(),
@@ -298,7 +245,7 @@ export default function TravelAssistant() {
         setIsLoading(false);
       }
     },
-    [apiKey, provider, messages, isLoading],
+    [apiKey, messages, isLoading],
   );
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -377,7 +324,7 @@ export default function TravelAssistant() {
                     Asistente de viaje
                   </h3>
                   <p className="text-[10px] font-medium" style={{ color: '#64748b' }}>
-                    {provider === 'openai' ? 'GPT-4o mini' : 'Gemini 1.5 Flash'}
+                    ChatGPT (GPT-4o mini)
                     {!hasKey && ' · Sin clave configurada'}
                   </p>
                 </div>
@@ -385,7 +332,6 @@ export default function TravelAssistant() {
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => {
-                    setProviderDraft(provider);
                     setKeyDraft(apiKey);
                     setShowSettings(!showSettings);
                   }}
@@ -427,33 +373,8 @@ export default function TravelAssistant() {
                     <div className="flex items-center gap-2">
                       <Key size={13} style={{ color: '#0e7490' }} />
                       <span className="text-xs font-bold" style={{ color: '#334155' }}>
-                        Configuración de la IA
+                        Clave API de OpenAI
                       </span>
-                    </div>
-
-                    {/* Provider toggle */}
-                    <div className="flex rounded-xl overflow-hidden" style={{ border: '1px solid rgba(0,0,0,0.08)' }}>
-                      {(['openai', 'gemini'] as Provider[]).map((p) => (
-                        <button
-                          key={p}
-                          onClick={() => {
-                            setProviderDraft(p);
-                            const envKey =
-                              p === 'openai'
-                                ? import.meta.env.VITE_OPENAI_API_KEY || ''
-                                : import.meta.env.VITE_GEMINI_API_KEY || '';
-                            const savedKey = localStorage.getItem('ta_api_key') || '';
-                            setKeyDraft(savedKey || envKey);
-                          }}
-                          className="flex-1 py-2 text-xs font-semibold transition-all"
-                          style={{
-                            background: providerDraft === p ? '#0e7490' : 'rgba(255,255,255,0.80)',
-                            color: providerDraft === p ? '#fff' : '#64748b',
-                          }}
-                        >
-                          {p === 'openai' ? 'OpenAI' : 'Gemini'}
-                        </button>
-                      ))}
                     </div>
 
                     {/* API Key input */}
@@ -462,7 +383,7 @@ export default function TravelAssistant() {
                         type="password"
                         value={keyDraft}
                         onChange={(e) => setKeyDraft(e.target.value)}
-                        placeholder={providerDraft === 'openai' ? 'sk-...' : 'AIza...'}
+                        placeholder="sk-..."
                         className="w-full text-xs rounded-xl px-3 py-2.5 outline-none transition-all"
                         style={{
                           background: 'rgba(255,255,255,0.90)',
