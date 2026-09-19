@@ -15,7 +15,6 @@ import {
   MapPin,
   ClipboardList,
 } from 'lucide-react';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { supabase } from '../lib/supabase';
 
 /* ─── Types ─── */
@@ -174,26 +173,29 @@ async function callGemini(messages: { role: string; content: string }[], apiKey:
     ? `${systemMsg.content}\n\n---\n\nPregunta del usuario:\n${userParts}`
     : userParts;
 
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const candidateModels = [
-    'gemini-1.5-flash-latest',
-    'gemini-1.5-flash-002',
-    'gemini-1.5-pro-latest',
-  ];
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
-  let lastError: any = null;
-  for (const modelName of candidateModels) {
-    try {
-      const model = genAI.getGenerativeModel({ model: modelName });
-      const result = await model.generateContent(fullPrompt);
-      const response = await result.response;
-      return response.text() || 'Sin respuesta.';
-    } catch (err) {
-      lastError = err;
-      console.warn(`[TravelAssistant] Fallo con ${modelName}, probando el siguiente modelo...`, err);
-    }
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': apiKey,
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
+    }),
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => null);
+    const msg = errData?.error?.message || `Error HTTP ${res.status}`;
+    console.error('[TravelAssistant] Gemini API error:', errData);
+    throw new Error(msg);
   }
-  throw lastError ?? new Error('Todos los modelos de Gemini fallaron.');
+
+  const data = await res.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? 'Sin respuesta.';
 }
 
 /* ─── Component ─── */
