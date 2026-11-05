@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
+import { supabase } from './supabase';
 
 export interface TripTheme {
   accentColor: string;
@@ -56,7 +57,7 @@ const JAPAN_TRIP: Trip = {
   id: 'japan-2026',
   title: 'Japan Trip',
   destination: 'Japón',
-  startDate: '2026-12-04',
+  startDate: '2026-12-03',
   endDate: '2026-12-14',
   cities: ['Osaka', 'Kioto', 'Tokio'],
   status: 'upcoming',
@@ -159,11 +160,29 @@ const TripContext = createContext<TripContextValue>({
 });
 
 export function TripProvider({ children }: { children: ReactNode }) {
-  const [trips, setTrips] = useState<Trip[]>(loadTrips);
-  const [activeTrip, setActiveTrip] = useState<Trip | null>(null);
+  const [storedTrips, setStoredTrips] = useState<Trip[]>(loadTrips);
+  const [itineraryRange, setItineraryRange] = useState<{ startDate: string; endDate: string } | null>(null);
+  const [activeTripState, setActiveTrip] = useState<Trip | null>(null);
   const [activities, setActivities] = useState<TripActivity[]>(loadActivities);
   const [reservations, setReservations] = useState<TripReservation[]>(loadReservations);
   const [selectedItineraryDay, setSelectedItineraryDay] = useState<SelectedItineraryDay | null>(null);
+
+  useEffect(() => {
+    supabase.from('itinerary_days').select('date').order('date', { ascending: true }).then(({ data }) => {
+      if (!data || data.length === 0) return;
+      setItineraryRange({ startDate: data[0].date, endDate: data[data.length - 1].date });
+    });
+  }, []);
+
+  const trips = useMemo(
+    () => storedTrips.map((t) => (t.id === JAPAN_TRIP.id && itineraryRange ? { ...t, ...itineraryRange } : t)),
+    [storedTrips, itineraryRange],
+  );
+
+  const activeTrip = useMemo(
+    () => (activeTripState ? trips.find((t) => t.id === activeTripState.id) ?? activeTripState : null),
+    [activeTripState, trips],
+  );
 
   const addTrip = useCallback((data: Omit<Trip, 'id' | 'theme'>) => {
     const newTrip: Trip = {
@@ -171,7 +190,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
       id: `trip-${Date.now()}`,
       theme: DEFAULT_THEME,
     };
-    setTrips((prev) => {
+    setStoredTrips((prev) => {
       const updated = [...prev, newTrip];
       persistTrips(updated);
       return updated;
@@ -179,7 +198,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateTrip = useCallback((id: string, data: Partial<Trip>) => {
-    setTrips((prev) => {
+    setStoredTrips((prev) => {
       const updated = prev.map((t) => (t.id === id ? { ...t, ...data } : t));
       persistTrips(updated);
       return updated;

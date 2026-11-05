@@ -12,20 +12,11 @@ import Modal from '../Modal';
 import MarkdownRenderer from '../MarkdownRenderer';
 import { useImagePaste } from '../../hooks/useImagePaste';
 import { exportDayToPdf } from '../../lib/exportDayPdf';
+import { type ItineraryDay, sortDaysByDate } from '../../lib/itineraryDays';
 import { useReadOnly } from '../../lib/ReadOnlyContext';
 import { CITIES, type CityConfig } from './JapanMap';
 import ActivityModal, { type DayActivity, type ActivityFormData, ACTIVITY_CATEGORIES, getCatStyle, uploadActivityFile } from '../ActivityModal';
 
-
-interface ItineraryDay {
-  id: string;
-  day_number: number;
-  date: string;
-  city: string;
-  title: string;
-  description: string;
-  map_url?: string;
-}
 
 
 function DescriptionTextarea({ value, onChange, rows = 8, placeholder = 'Descripción...' }: {
@@ -525,8 +516,9 @@ interface DayFullViewProps {
 
 export default function DayFullView({ day, cityStyle, onBack, days, allDays, onNavigateDay, onNavigateHome, onNavigateCity }: DayFullViewProps) {
   const isReadOnly = useReadOnly();
-  const globalDays = (allDays && allDays.length > 0 ? allDays : days).sort((a, b) => a.day_number - b.day_number);
+  const globalDays = sortDaysByDate(allDays && allDays.length > 0 ? allDays : days);
   const currentGlobalIndex = globalDays.findIndex((d) => d.id === day.id);
+  const dayNumber = currentGlobalIndex + 1;
   const isFirstDay = currentGlobalIndex <= 0;
   const isLastDay = currentGlobalIndex >= globalDays.length - 1;
   const [activities, setActivities] = useState<DayActivity[]>([]);
@@ -662,7 +654,7 @@ export default function DayFullView({ day, cityStyle, onBack, days, allDays, onN
                   <Calendar size={11} style={{ color: '#94a3b8' }} />
                   <span className="text-xs capitalize" style={{ color: '#475569' }}>{formatDate(day.date)}</span>
                   <span style={{ color: '#cbd5e1' }}>·</span>
-                  <span className={`text-xs font-semibold ${cityStyle.textColor} opacity-80`}>Día {day.day_number}</span>
+                  <span className={`text-xs font-semibold ${cityStyle.textColor} opacity-80`}>Día {dayNumber}</span>
                 </div>
                 <div className="flex items-center gap-2 mt-2.5">
                   <button
@@ -713,7 +705,7 @@ export default function DayFullView({ day, cityStyle, onBack, days, allDays, onN
             {/* Center: day info */}
             <div className="flex-1 min-w-0 text-center">
               <span className="text-sm font-bold truncate block" style={{ color: '#0f172a' }}>
-                Día {day.day_number} · {new Date(day.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                Día {dayNumber} · {new Date(day.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
               </span>
             </div>
 
