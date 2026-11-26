@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { UtensilsCrossed, MapPin, X, ExternalLink, ChevronRight, Clock, DollarSign } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import Modal from '../Modal';
+import { type FileAttachment, parseAttachments, isImageAttachment } from '../../lib/attachments';
 
 interface RestaurantActivity {
   id: string;
@@ -15,6 +16,7 @@ interface RestaurantActivity {
   restaurant_avg_price: string;
   restaurant_notes: string;
   description: string;
+  attachments?: FileAttachment[] | null;
   day_date: string;
   day_city: string;
   day_number: number;
@@ -141,6 +143,7 @@ export default function Restaurantes({ onSectionChange }: RestaurantesSectionPro
           restaurant_avg_price: act.restaurant_avg_price || '',
           restaurant_notes: act.restaurant_notes || '',
           description: act.description || '',
+          attachments: parseAttachments(act),
           day_date: day.date,
           day_city: day.city,
           day_number: dayNumber,
@@ -407,13 +410,17 @@ export default function Restaurantes({ onSectionChange }: RestaurantesSectionPro
                   );
                 })()}
 
-                {/* Attachment image */}
-                {selectedItem.attachment_url && /\.(jpg|jpeg|png|gif|webp)$/i.test(selectedItem.attachment_url) && (
+                {/* Attachment images (all) */}
+                {parseAttachments(selectedItem).filter(isImageAttachment).length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#94a3b8' }}>Adjunto</p>
-                    <a href={selectedItem.attachment_url} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-xl border border-slate-200 hover:shadow-md transition-all">
-                      <img src={selectedItem.attachment_url} alt={selectedItem.attachment_name || 'Adjunto'} className="w-full max-h-48 object-cover" loading="lazy" />
-                    </a>
+                    <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#94a3b8' }}>Adjuntos</p>
+                    <div className={`grid gap-2 ${parseAttachments(selectedItem).filter(isImageAttachment).length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                      {parseAttachments(selectedItem).filter(isImageAttachment).map((att, i) => (
+                        <a key={i} href={att.url} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-xl border border-slate-200 hover:shadow-md transition-all">
+                          <img src={att.url} alt={att.name || 'Adjunto'} className="w-full max-h-48 object-cover" loading="lazy" />
+                        </a>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

@@ -8,8 +8,7 @@ interface Activity {
   title: string;
   description: string;
   sort_order: number;
-  attachment_url?: string | null;
-  attachment_name?: string | null;
+  attachments?: { url: string; name: string }[] | null;
   has_pending_tasks?: boolean;
 }
 
@@ -43,6 +42,13 @@ const CATEGORY_ACCENT: Record<string, [number, number, number]> = {
   visit: [190, 24, 93],
   landmark: [161, 98, 7],
 };
+
+function getAttachmentNames(act: Activity): string[] {
+  if (Array.isArray(act.attachments)) {
+    return act.attachments.map((a) => a.name).filter(Boolean);
+  }
+  return [];
+}
 
 // City name → style mapping for the full-itinerary export
 const CITY_STYLES_MAP: Record<string, CityStyle> = {
@@ -190,11 +196,13 @@ function renderDayBlock(
     doc.setFontSize(8.5);
     const titleLines = doc.splitTextToSize(titleClean, CW - 4) as string[];
     const descLines = descClean ? (doc.splitTextToSize(descClean, CW - 4) as string[]) : [];
+    const attachNames = getAttachmentNames(act);
     const pendingH = act.has_pending_tasks ? LINE_H + 1 : 0;
+    const attachH = attachNames.length > 0 ? 4 + attachNames.length * LINE_H : 0;
     const blockH =
       5 + 5.5 + titleLines.length * LINE_H +
       (descLines.length > 0 ? 3 + descLines.length * LINE_H : 0) +
-      pendingH + 5;
+      pendingH + attachH + 5;
 
     need(blockH + 5);
 
@@ -230,6 +238,20 @@ function renderDayBlock(
         need(LINE_H + 2);
         doc.text(dl, innerX, iy);
         iy += LINE_H;
+      }
+    }
+
+    if (attachNames.length > 0) {
+      iy += 2;
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(100, 110, 125);
+      doc.text('Adjuntos:', innerX, iy);
+      iy += LINE_H - 1;
+      for (const name of attachNames) {
+        need(LINE_H);
+        doc.text(`- ${name}`, innerX + 3, iy);
+        iy += LINE_H - 0.5;
       }
     }
 
@@ -403,11 +425,13 @@ export function exportDayToPdf(
     doc.setFontSize(8.5);
     const titleLines = doc.splitTextToSize(titleClean, CW - 4) as string[];
     const descLines = descClean ? (doc.splitTextToSize(descClean, CW - 4) as string[]) : [];
+    const attachNames = getAttachmentNames(act);
     const pendingH = act.has_pending_tasks ? LINE_H + 1 : 0;
+    const attachH = attachNames.length > 0 ? 4 + attachNames.length * LINE_H : 0;
     const blockH =
       5 + 5.5 + titleLines.length * LINE_H +
       (descLines.length > 0 ? 3 + descLines.length * LINE_H : 0) +
-      pendingH + 5;
+      pendingH + attachH + 5;
 
     need(blockH + 5);
 
@@ -443,6 +467,20 @@ export function exportDayToPdf(
         need(LINE_H + 2);
         doc.text(dl, innerX, iy);
         iy += LINE_H;
+      }
+    }
+
+    if (attachNames.length > 0) {
+      iy += 2;
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(100, 110, 125);
+      doc.text('Adjuntos:', innerX, iy);
+      iy += LINE_H - 1;
+      for (const name of attachNames) {
+        need(LINE_H);
+        doc.text(`- ${name}`, innerX + 3, iy);
+        iy += LINE_H - 0.5;
       }
     }
 

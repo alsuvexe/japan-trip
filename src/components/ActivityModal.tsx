@@ -8,7 +8,6 @@ import {
   Sparkles,
   X,
   AlertCircle,
-  Paperclip,
   Eye,
   EyeOff,
   Image as ImageIcon,
@@ -16,7 +15,8 @@ import {
 import Modal from './Modal';
 import MarkdownRenderer from './MarkdownRenderer';
 import { useImagePaste } from '../hooks/useImagePaste';
-import { supabase } from '../lib/supabase';
+import { type FileAttachment } from '../lib/attachments';
+import { AttachmentsEditor, useActivityAttachments } from './Attachments';
 
 export interface DayActivity {
   id: string;
@@ -28,6 +28,7 @@ export interface DayActivity {
   sort_order: number;
   attachment_url?: string | null;
   attachment_name?: string | null;
+  attachments?: FileAttachment[] | null;
   has_pending_tasks?: boolean;
   restaurant_service?: string;
   restaurant_name?: string;
@@ -124,19 +125,10 @@ export function DescriptionTextarea({ value, onChange, rows = 6, placeholder = '
   );
 }
 
-export async function uploadActivityFile(file: File): Promise<{ url: string; name: string } | null> {
-  const ext = file.name.split('.').pop();
-  const path = `activities/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  const { error } = await supabase.storage.from('attachments').upload(path, file);
-  if (error) return null;
-  const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path);
-  return { url: urlData.publicUrl, name: file.name };
-}
-
 interface ActivityModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (form: ActivityFormData, attachment: File | null) => void;
+  onSave: (form: ActivityFormData, attachments: FileAttachment[]) => void;
   title?: string;
   saveLabel?: string;
   initialData?: Partial<ActivityFormData>;
@@ -153,21 +145,20 @@ export default function ActivityModal({
   saving = false,
 }: ActivityModalProps) {
   const [form, setForm] = useState<ActivityFormData>({ ...EMPTY_FORM, ...initialData });
-  const [attachFile, setAttachFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const attach = useActivityAttachments([]);
 
   const prevInitRef = useRef(initialData);
   if (initialData !== prevInitRef.current) {
     prevInitRef.current = initialData;
     setForm({ ...EMPTY_FORM, ...initialData });
-    setAttachFile(null);
+    attach.reset([]);
   }
 
   const isValid = form.category === 'restaurant' ? form.restaurant_name.trim().length > 0 : form.title.trim().length > 0;
 
   const handleClose = () => {
     onClose();
-    setAttachFile(null);
+    attach.reset([]);
   };
 
   return (
@@ -182,7 +173,7 @@ export default function ActivityModal({
             <X size={15} /><span>Cancelar</span>
           </button>
           <button
-            onClick={() => onSave(form, attachFile)}
+            onClick={async () => { const files = await attach.uploadAll(); onSave(form, files); }}
             disabled={!isValid || saving}
             className="japan-btn-primary gap-2 disabled:opacity-40"
           >
@@ -288,7 +279,7 @@ export default function ActivityModal({
                 placeholder="Ej: Fushimi Inari"
                 className="japan-input"
                 autoFocus
-                onKeyDown={(e) => { if (e.key === 'Enter') onSave(form, attachFile); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') attach.uploadAll().then((files) => onSave(form, files)); }}
               />
             </div>
             <div className="md:col-span-2">
@@ -332,26 +323,8 @@ export default function ActivityModal({
           {form.has_pending_tasks && <AlertCircle size={16} className="text-orange-500 shrink-0" />}
         </button>
 
-        {/* Attachment */}
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-          <div className="flex-1 japan-input flex items-center gap-2 cursor-pointer hover:border-cyan-400">
-            <Paperclip size={13} style={{ color: '#94a3b8' }} className="shrink-0" />
-            <span className={`text-sm ${attachFile ? 'text-cyan-700' : ''}`} style={attachFile ? undefined : { color: '#94a3b8' }}>
-              {attachFile ? attachFile.name : 'Adjuntar archivo...'}
-            </span>
-          </div>
-          {attachFile && (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); setAttachFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
-              className="w-9 h-9 flex items-center justify-center hover:text-red-500 border border-slate-300 rounded-lg"
-              style={{ color: '#64748b' }}
-            >
-              <X size={13} />
-            </button>
-          )}
-          <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp" onChange={(e) => setAttachFile(e.target.files?.[0] || null)} />
-        </div>
+        {/* Attachments (multiple) */}
+        <AttachmentsEditor state={attach} />
       </div>
     </Modal>
   );

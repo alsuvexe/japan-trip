@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, PlusCircle, Pencil, Trash2, Save, X,
-  Clock, AlertCircle, Paperclip, FileText, ExternalLink,
+  Clock, AlertCircle,
   Eye, EyeOff, Image as ImageIcon, Link, MapPin, Calendar,
   FileDown, Navigation, ChevronLeft, ChevronRight, Home,
 } from 'lucide-react';
@@ -15,7 +15,9 @@ import { exportDayToPdf } from '../../lib/exportDayPdf';
 import { type ItineraryDay, sortDaysByDate } from '../../lib/itineraryDays';
 import { useReadOnly } from '../../lib/ReadOnlyContext';
 import { CITIES, type CityConfig } from './JapanMap';
-import ActivityModal, { type DayActivity, type ActivityFormData, ACTIVITY_CATEGORIES, getCatStyle, uploadActivityFile } from '../ActivityModal';
+import ActivityModal, { type DayActivity, type ActivityFormData, ACTIVITY_CATEGORIES, getCatStyle, DescriptionTextarea } from '../ActivityModal';
+import { type FileAttachment, parseAttachments, deleteAttachmentFile } from '../../lib/attachments';
+import { AttachmentsEditor, AttachmentViewer, useActivityAttachments } from '../Attachments';
 
 
 
@@ -237,18 +239,20 @@ function DayMapSection({ dayId, initialUrl, city }: { dayId: string; initialUrl:
   );
 }
 
-function ActivityCard({ act, cityStyle, onEdit, onDelete }: {
+function ActivityCard({ act, cityStyle, onEdit, onDelete, onRemoveAttachment }: {
   act: DayActivity;
   cityStyle: CityConfig;
   onEdit: () => void;
   onDelete: () => void;
+  onRemoveAttachment?: (index: number) => void;
 }) {
   const isReadOnly = useReadOnly();
   const [expanded, setExpanded] = useState(false);
   const cat = getCatStyle(act.category);
   const CatIcon = cat.icon;
   const isRestaurant = act.category === 'restaurant';
-  const hasDetail = !!(act.description || act.attachment_url || (isRestaurant && (act.restaurant_notes || act.restaurant_service || act.restaurant_food_type || act.restaurant_avg_price)));
+  const attachments = parseAttachments(act);
+  const hasDetail = !!(act.description || attachments.length > 0 || (isRestaurant && (act.restaurant_notes || act.restaurant_service || act.restaurant_food_type || act.restaurant_avg_price)));
 
   return (
     <motion.div
@@ -364,21 +368,10 @@ function ActivityCard({ act, cityStyle, onEdit, onDelete }: {
                   </div>
                 )
               )}
-              {act.attachment_url && (
-                /\.(jpg|jpeg|png|gif|webp)$/i.test(act.attachment_url) ? (
-                  <img src={act.attachment_url} alt={act.attachment_name || 'Adjunto'} className="rounded-xl max-h-64 object-cover border border-slate-200 shadow-sm" />
-                ) : (
-                  <a
-                    href={act.attachment_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-sm text-cyan-700 hover:text-cyan-600 bg-cyan-50 border border-cyan-200 rounded-xl px-4 py-2.5"
-                  >
-                    <FileText size={14} />
-                    <span className="max-w-xs truncate">{act.attachment_name || 'Adjunto'}</span>
-                    <ExternalLink size={12} className="shrink-0" />
-                  </a>
-                )
+              {attachments.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  <AttachmentViewer attachments={attachments} onRemove={undefined} />
+                </div>
               )}
             </div>
           </motion.div>
@@ -390,19 +383,17 @@ function ActivityCard({ act, cityStyle, onEdit, onDelete }: {
 
 function EditActivityForm({ act, onSave, onCancel }: {
   act: DayActivity;
-  onSave: (updated: Partial<DayActivity>, file?: File | null) => Promise<void>;
+  onSave: (updated: Partial<DayActivity>) => Promise<void>;
   onCancel: () => void;
 }) {
   const [form, setForm] = useState<Partial<DayActivity>>({ ...act });
-  const [attachFile, setAttachFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const attach = useActivityAttachments(parseAttachments(act));
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cat = getCatStyle(form.category || 'activity');
 
   const handleSave = async () => {
-    setUploading(true);
-    await onSave(form, attachFile);
-    setUploading(false);
+    const attachments = await attach.uploadAll();
+    await onSave({ ...form, attachments });
   };
 
   return (
@@ -471,13 +462,7 @@ function EditActivityForm({ act, onSave, onCancel }: {
       ) : (
         <DescriptionTextarea value={form.description || ''} onChange={(val) => setForm({ ...form, description: val })} rows={8} />
       )}
-      <div className="flex items-center gap-3 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-        <div className="flex-1 japan-input flex items-center gap-2 cursor-pointer hover:border-cyan-400 py-3">
-          <Paperclip size={14} style={{ color: '#94a3b8' }} className="shrink-0" />
-          <span className={`text-sm ${attachFile ? 'text-cyan-700' : ''}`} style={attachFile ? undefined : { color: '#94a3b8' }}>{attachFile ? attachFile.name : (form.attachment_name || 'Adjuntar archivo...')}</span>
-        </div>
-        <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp" onChange={(e) => setAttachFile(e.target.files?.[0] || null)} />
-      </div>
+      <AttachmentsEditor state={attach} />
       <button
         type="button"
         onClick={() => setForm({ ...form, has_pending_tasks: !form.has_pending_tasks })}
@@ -497,7 +482,7 @@ function EditActivityForm({ act, onSave, onCancel }: {
       </button>
       <div className="flex gap-2 justify-end">
         <button onClick={onCancel} className="japan-btn border border-slate-300 hover:bg-slate-100 gap-2" style={{ color: '#475569' }}><X size={14} /> Cancelar</button>
-        <button onClick={handleSave} disabled={uploading || (form.category === 'restaurant' ? !form.restaurant_name?.trim() : !form.title?.trim())} className="japan-btn-primary gap-2 disabled:opacity-50"><Save size={14} /> {uploading ? 'Guardando...' : 'Guardar'}</button>
+        <button onClick={handleSave} disabled={attach.uploading || (form.category === 'restaurant' ? !form.restaurant_name?.trim() : !form.title?.trim())} className="japan-btn-primary gap-2 disabled:opacity-50"><Save size={14} /> {attach.uploading ? 'Guardando...' : 'Guardar'}</button>
       </div>
     </div>
   );
@@ -544,15 +529,9 @@ export default function DayFullView({ day, cityStyle, onBack, days, allDays, onN
     return () => document.removeEventListener('keydown', handleKey);
   }, [onBack]);
 
-  const handleAddActivity = async (formData: ActivityFormData, attachFile: File | null) => {
+  const handleAddActivity = async (formData: ActivityFormData, attachments: FileAttachment[]) => {
     setUploading(true);
-    let attachment_url: string | null = null;
-    let attachment_name: string | null = null;
-    if (attachFile) {
-      const res = await uploadActivityFile(attachFile);
-      if (res) { attachment_url = res.url; attachment_name = res.name; }
-    }
-    const { data } = await supabase.from('day_activities').insert({ ...formData, day_id: day.id, sort_order: activities.length, attachment_url, attachment_name }).select().maybeSingle();
+    const { data } = await supabase.from('day_activities').insert({ ...formData, day_id: day.id, sort_order: activities.length, attachments }).select().maybeSingle();
     setUploading(false);
     if (data) {
       setActivities((prev) => [...prev, data].sort((a, b) => (a.time || '').localeCompare(b.time || '')));
@@ -560,15 +539,22 @@ export default function DayFullView({ day, cityStyle, onBack, days, allDays, onN
     }
   };
 
-  const saveEdit = async (id: string, updated: Partial<DayActivity>, file?: File | null) => {
-    let updatedForm = { ...updated };
-    if (file) {
-      const res = await uploadActivityFile(file);
-      if (res) updatedForm = { ...updatedForm, attachment_url: res.url, attachment_name: res.name };
+  const saveEdit = async (id: string, updated: Partial<DayActivity>) => {
+    const { data } = await supabase.from('day_activities').update(updated).eq('id', id).select().maybeSingle();
+    if (data) {
+      setActivities((prev) => prev.map((a) => a.id === id ? data : a).sort((a, b) => (a.time || '').localeCompare(b.time || '')));
     }
-    await supabase.from('day_activities').update(updatedForm).eq('id', id);
-    setActivities((prev) => prev.map((a) => a.id === id ? { ...a, ...updatedForm } : a).sort((a, b) => (a.time || '').localeCompare(b.time || '')));
     setEditingId(null);
+  };
+
+  // Removes a single attachment from the row (DB + storage) without touching the others
+  const removeAttachment = async (act: DayActivity, index: number) => {
+    const att = parseAttachments(act)[index];
+    if (!att) return;
+    const next = parseAttachments(act).filter((_, i) => i !== index);
+    setActivities((prev) => prev.map((a) => a.id === act.id ? { ...a, attachments: next } : a));
+    await supabase.from('day_activities').update({ attachments: next }).eq('id', act.id);
+    await deleteAttachmentFile(att.url);
   };
 
   const deleteActivity = async (id: string) => {
@@ -790,7 +776,7 @@ export default function DayFullView({ day, cityStyle, onBack, days, allDays, onN
                     <EditActivityForm
                       key={act.id}
                       act={act}
-                      onSave={(updated, file) => saveEdit(act.id, updated, file)}
+                      onSave={(updated) => saveEdit(act.id, updated)}
                       onCancel={() => setEditingId(null)}
                     />
                   );
@@ -802,6 +788,7 @@ export default function DayFullView({ day, cityStyle, onBack, days, allDays, onN
                     cityStyle={cityStyle}
                     onEdit={() => setEditingId(act.id)}
                     onDelete={() => setDeleteId(act.id)}
+                    onRemoveAttachment={isReadOnly ? undefined : (i) => removeAttachment(act, i)}
                   />
                 );
               })}
