@@ -20,56 +20,6 @@ import { type FileAttachment, parseAttachments, deleteAttachmentFile } from '../
 import { AttachmentsEditor, AttachmentViewer, useActivityAttachments } from '../Attachments';
 
 
-
-function DescriptionTextarea({ value, onChange, rows = 8, placeholder = 'Descripción...' }: {
-  value: string; onChange: (v: string) => void; rows?: number; placeholder?: string;
-}) {
-  const [preview, setPreview] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const insertAtCursor = useCallback((text: string) => {
-    const el = textareaRef.current;
-    if (!el) { onChange(value + text); return; }
-    const start = el.selectionStart;
-    const end = el.selectionEnd;
-    const next = value.slice(0, start) + (start > 0 && value[start - 1] !== '\n' ? '\n' : '') + text + '\n' + value.slice(end);
-    onChange(next);
-    setTimeout(() => {
-      const pos = start + (start > 0 && value[start - 1] !== '\n' ? 1 : 0) + text.length + 1;
-      el.setSelectionRange(pos, pos);
-      el.focus();
-    }, 0);
-  }, [value, onChange]);
-
-  const { handlePaste, status } = useImagePaste({ onInsert: insertAtCursor });
-
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-medium uppercase tracking-wider flex items-center gap-1" style={{ color: '#475569' }}>
-            <ImageIcon size={10} /> Pega imágenes con Ctrl+V
-          </span>
-          {status === 'uploading' && <span className="text-[10px] text-cyan-600 animate-pulse">Subiendo...</span>}
-          {status === 'done' && <span className="text-[10px] text-emerald-600">Insertada</span>}
-          {status === 'error' && <span className="text-[10px] text-red-500">Error</span>}
-        </div>
-        <button type="button" onClick={() => setPreview(!preview)} className="flex items-center gap-1 text-[10px] hover:text-cyan-700 transition-colors py-0.5 px-1.5 rounded hover:bg-cyan-50" style={{ color: '#475569' }}>
-          {preview ? <EyeOff size={10} /> : <Eye size={10} />}
-          {preview ? 'Editor' : 'Vista previa'}
-        </button>
-      </div>
-      {preview ? (
-        <div className="japan-input text-sm cursor-text overflow-auto" style={{ minHeight: `${rows * 24}px` }} onClick={() => setPreview(false)}>
-          {value ? <MarkdownRenderer content={value} /> : <span className="italic" style={{ color: '#94a3b8' }}>Sin contenido — pulsa para editar</span>}
-        </div>
-      ) : (
-        <textarea ref={textareaRef} value={value} onChange={(e) => onChange(e.target.value)} onPaste={handlePaste} rows={rows} className={`japan-input text-sm resize-y ${status === 'uploading' ? 'paste-uploading' : ''}`} style={{ minHeight: `${rows * 24}px` }} placeholder={placeholder} />
-      )}
-    </div>
-  );
-}
-
 function DayMapSection({ dayId, initialUrl, city }: { dayId: string; initialUrl: string; city: string }) {
   const [url, setUrl] = useState(initialUrl || '');
   const [input, setInput] = useState(initialUrl || '');
